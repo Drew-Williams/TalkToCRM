@@ -19,7 +19,8 @@
     "default_path": "src/sidepanel/index.html"
   },
   "permissions": [
-    "sidePanel"
+    "sidePanel",
+    "identity"
   ],
   "host_permissions": [
     "https://app.hubspot.com/*",

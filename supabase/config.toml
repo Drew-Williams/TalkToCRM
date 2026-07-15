@@ -1,0 +1,18 @@
+# project_id gets filled in once the new Supabase project exists — either by
+# running `supabase link --project-ref <ref>` locally, or by pasting the ref
+# here manually. Leave as a placeholder until then.
+project_id = "REPLACE_WITH_NEW_PROJECT_REF"
+
+# All of our functions verify the caller's JWT themselves (see
+# supabase/functions/_shared/auth.ts -> getCallerUser) so we can return a
+# consistent JSON error shape instead of the platform's default 401 page,
+# and so the two OAuth exchange functions can also accept requests where the
+# caller intentionally omits a token during local testing.
+[functions.crm-proxy]
+verify_jwt = false
+
+[functions.hubspot-oauth-exchange]
+verify_jwt = false
+
+[functions.pipedrive-oauth-exchange]
+verify_jwt = false

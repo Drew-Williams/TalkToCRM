@@ -41,7 +41,10 @@ export default defineManifest({
     default_path: "src/sidepanel/index.html",
   },
 
-  permissions: ["sidePanel"],
+  // "identity" is for chrome.identity.launchWebAuthFlow (HubSpot/Pipedrive
+  // OAuth connect) — it does NOT grant access to Google account info the
+  // way chrome.identity.getAuthToken would; we never call that API.
+  permissions: ["sidePanel", "identity"],
 
   host_permissions: ["https://app.hubspot.com/*", "https://*.pipedrive.com/*"],
 
