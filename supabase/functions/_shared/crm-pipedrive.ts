@@ -32,6 +32,23 @@ async function fetchContacts(apiBase: string, accessToken: string, dealId: strin
   }
 }
 
+// The v2 /deals/{id} response only includes raw stage_id/pipeline_id
+// integers, not nested name objects (unlike v1) — so a friendly stage/
+// pipeline name needs its own lookup. Best-effort: falls back to the raw
+// numeric ID (stringified) if the lookup fails, same as before this fix.
+async function fetchName(apiBase: string, accessToken: string, resource: "stages" | "pipelines", id: number): Promise<string | null> {
+  try {
+    const res = await fetch(`${apiBase}/api/v2/${resource}/${id}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.data?.name as string) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const pipedriveAdapter: CrmAdapter = {
   async exchangeCode(code, redirectUri) {
     const res = await fetch("https://oauth.pipedrive.com/oauth/token", {
@@ -109,14 +126,18 @@ export const pipedriveAdapter: CrmAdapter = {
     const data = await res.json();
     const deal = data.data ?? {};
 
-    const contacts = await fetchContacts(base, accessToken, dealId);
+    const [contacts, stageName, pipelineName] = await Promise.all([
+      fetchContacts(base, accessToken, dealId),
+      deal.stage_id != null ? fetchName(base, accessToken, "stages", deal.stage_id) : Promise.resolve(null),
+      deal.pipeline_id != null ? fetchName(base, accessToken, "pipelines", deal.pipeline_id) : Promise.resolve(null),
+    ]);
 
     return {
       provider: "pipedrive",
       dealId: String(dealId),
       name: deal.title ?? null,
-      stage: deal.stage?.name ?? (deal.stage_id != null ? String(deal.stage_id) : null),
-      pipeline: deal.pipeline?.name ?? null,
+      stage: stageName ?? (deal.stage_id != null ? String(deal.stage_id) : null),
+      pipeline: pipelineName ?? (deal.pipeline_id != null ? String(deal.pipeline_id) : null),
       amountCents: deal.value != null ? Math.round(Number(deal.value) * 100) : null,
       currency: deal.currency ?? null,
       closeDate: deal.expected_close_date ?? null,
