@@ -1,7 +1,4 @@
-# project_id gets filled in once the new Supabase project exists — either by
-# running `supabase link --project-ref <ref>` locally, or by pasting the ref
-# here manually. Leave as a placeholder until then.
-project_id = "REPLACE_WITH_NEW_PROJECT_REF"
+project_id = "ziccpxpvrgbsjybjhzhv"
 
 # All of our functions verify the caller's JWT themselves (see
 # supabase/functions/_shared/auth.ts -> getCallerUser) so we can return a
