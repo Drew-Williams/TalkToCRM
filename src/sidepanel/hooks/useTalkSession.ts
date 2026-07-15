@@ -34,6 +34,26 @@ export function useTalkSession(deal: DetectedDeal | null) {
     setTranscript([]);
     setStatus("connecting");
     try {
+      // Request (and immediately release) the mic *before* any network call.
+      // getUserMedia's permission prompt needs to fire right on the click's
+      // user-gesture, with no async gap first — otherwise Chrome can silently
+      // auto-dismiss it ("NotAllowedError: Permission dismissed") without the
+      // rep ever seeing a prompt to respond to. fetchConversationToken()
+      // below is itself an async network round-trip, so it must come after
+      // this, not before. Once granted, permission persists at the
+      // extension's origin, so @elevenlabs/client's own later getUserMedia
+      // call (inside startSession) resolves instantly with no second prompt.
+      try {
+        const warmupStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        warmupStream.getTracks().forEach((track) => track.stop());
+      } catch {
+        setStatus("ended");
+        setError(
+          "Microphone access was blocked. Click the lock/info icon in the address bar (or chrome://extensions), allow the microphone for this extension, then try again.",
+        );
+        return;
+      }
+
       const conversationToken = await fetchConversationToken();
       const conversation = await Conversation.startSession({
         conversationToken,

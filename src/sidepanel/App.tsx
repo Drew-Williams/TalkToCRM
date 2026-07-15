@@ -35,7 +35,7 @@ export default function App() {
         <>
           <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
           <DealStatusCard deal={deal} loading={dealLoading} />
-          {deal && <TalkToCrmCard deal={deal} />}
+          <TalkToCrmCard deal={deal} />
         </>
       )}
     </div>
