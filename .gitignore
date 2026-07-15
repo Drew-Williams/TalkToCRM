@@ -1,5 +1,7 @@
 node_modules
-dist
+# dist is intentionally tracked for now (temporary) so it can be downloaded
+# and loaded into Chrome without a local Node/npm toolchain. Revisit once the
+# extension is stable and everyone testing it can build locally.
 dist-*
 .env.local
 .env.*.local
