@@ -60,8 +60,8 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
         <p className="text-xs text-muted-foreground">
-          Coaching and CRM writes aren't wired up yet — step 1 is just confirming we can reliably see the deal you're
-          looking at.
+          CRM writes aren't wired up yet — the "Talk to CRM" card below can read this deal out loud, but can't change
+          anything in {crmName} yet.
         </p>
       </CardContent>
     </Card>

@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.pipedrive-oauth-exchange]
 verify_jwt = false
+
+[functions.elevenlabs-conversation-token]
+verify_jwt = false

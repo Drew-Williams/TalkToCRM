@@ -4,6 +4,7 @@ import { useCrmConnections } from "./hooks/useCrmConnections";
 import { DealStatusCard } from "./components/DealStatusCard";
 import { SignInView } from "./components/SignInView";
 import { ConnectCrmCard } from "./components/ConnectCrmCard";
+import { TalkToCrmCard } from "./components/TalkToCrmCard";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase/client";
 
@@ -34,6 +35,7 @@ export default function App() {
         <>
           <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
           <DealStatusCard deal={deal} loading={dealLoading} />
+          {deal && <TalkToCrmCard deal={deal} />}
         </>
       )}
     </div>
