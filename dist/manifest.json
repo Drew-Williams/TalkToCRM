@@ -1,0 +1,70 @@
+{
+  "manifest_version": 3,
+  "name": "Talk to CRM",
+  "description": "Voice-first sales coaching that reads live HubSpot/Pipedrive deal data and coaches the rep out loud — no chat UI, no silent CRM writes.",
+  "version": "0.1.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Talk to CRM"
+  },
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "permissions": [
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://app.hubspot.com/*",
+    "https://*.pipedrive.com/*"
+  ],
+  "content_scripts": [
+    {
+      "js": [
+        "assets/hubspot.content.ts-loader-C_0-Sk23.js"
+      ],
+      "matches": [
+        "https://app.hubspot.com/*"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "js": [
+        "assets/pipedrive.content.ts-loader-DwcAWB9P.js"
+      ],
+      "matches": [
+        "https://*.pipedrive.com/*"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://app.hubspot.com/*"
+      ],
+      "resources": [
+        "assets/watch-and-report-BiK8TIsj.js",
+        "assets/hubspot.content.ts-DrlzFiy6.js"
+      ],
+      "use_dynamic_url": false
+    },
+    {
+      "matches": [
+        "https://*.pipedrive.com/*"
+      ],
+      "resources": [
+        "assets/watch-and-report-BiK8TIsj.js",
+        "assets/pipedrive.content.ts-CFi6h5hE.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}
