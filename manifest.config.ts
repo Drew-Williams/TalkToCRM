@@ -1,8 +1,8 @@
 import { defineManifest } from "@crxjs/vite-plugin";
 import pkg from "./package.json";
 
-// Step 1 scope: detect the deal a rep is looking at and show it in the side
-// panel. No AI, no CRM writes yet — so permissions stay minimal on purpose.
+// Permissions stay as minimal as each step actually needs, not maximal for
+// whatever might come later:
 //
 //   - "sidePanel"      → render our UI as a Chrome side panel instead of a popup
 //   - host_permissions → ONLY the two CRM origins we read deal pages from.
@@ -10,11 +10,15 @@ import pkg from "./package.json";
 //     own tab via chrome.runtime.MessageSender, and that sender info is
 //     populated for any page matched by host_permissions, so the background
 //     worker never needs broader tab visibility.
+//   - "identity" and "scripting" were added in later steps — see their own
+//     comments below for why each is needed.
+//
+// Still no CRM-write permissions of any kind — push_to_crm isn't built yet.
 export default defineManifest({
   manifest_version: 3,
-  name: "Talk to CRM",
+  name: "Corner",
   description:
-    "Voice-first sales coaching that reads live HubSpot/Pipedrive deal data and coaches the rep out loud — no chat UI, no silent CRM writes.",
+    "The private deal coach you talk to — reads live HubSpot/Pipedrive deal data and coaches you out loud, no chat UI, no silent CRM writes.",
   version: pkg.version,
 
   // Deliberately NOT under public/ — Vite auto-copies that dir's contents to
@@ -29,7 +33,7 @@ export default defineManifest({
   },
 
   action: {
-    default_title: "Talk to CRM",
+    default_title: "Corner",
   },
 
   background: {

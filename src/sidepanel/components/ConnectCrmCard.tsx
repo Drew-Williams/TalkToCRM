@@ -37,7 +37,7 @@ export function ConnectCrmCard({ connections, loading, onConnected }: ConnectCrm
     <Card className="mb-4">
       <CardHeader>
         <CardTitle>CRM connections</CardTitle>
-        <CardDescription>Connect the CRM you sell in so Talk to CRM can read your deals.</CardDescription>
+        <CardDescription>Connect the CRM you sell in so Corner can read your deals.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {PROVIDERS.map(({ id, label }) => {

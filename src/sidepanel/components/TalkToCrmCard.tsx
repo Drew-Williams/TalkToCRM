@@ -63,7 +63,7 @@ export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
   return (
     <Card className="mb-4">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle>Talk to CRM</CardTitle>
+        <CardTitle>Talk it through</CardTitle>
         {status === "connected" && <Badge variant={mode === "speaking" ? "default" : "secondary"}>{mode}</Badge>}
       </CardHeader>
       <CardContent className="space-y-3">

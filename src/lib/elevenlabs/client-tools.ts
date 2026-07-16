@@ -1,14 +1,14 @@
 import { supabase } from "@/lib/supabase/client";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 
-const NOT_IMPLEMENTED = "This capability isn't available yet in Talk to CRM.";
+const NOT_IMPLEMENTED = "This capability isn't available yet in Corner.";
 
 /** Shared by both real tools below — resolves the session token or a clear reason there isn't one. */
 async function getAccessTokenOrReason(): Promise<{ accessToken: string } | { error: string }> {
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (!accessToken) {
-    return { error: "The rep is signed out of Talk to CRM. Ask them to sign in first." };
+    return { error: "The rep is signed out of Corner. Ask them to sign in first." };
   }
   return { accessToken };
 }

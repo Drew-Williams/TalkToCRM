@@ -2,10 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Talk to CRM — side panel design tokens.
-   Standard shadcn/ui "slate" defaults for now. No brand palette yet
-   (per the step-1 decision to use placeholders until brand direction
-   lands) — swap these HSL values when it does. */
+/* Corner — side panel design tokens.
+   Standard shadcn/ui "slate" defaults for now. Renamed from "Talk to CRM"
+   to "Corner" to match the marketing site's branding, but this file still
+   uses placeholder colors, not the landing page's actual palette (dark
+   navy / cream / red-orange accent) — that needs real design tokens
+   (hex values, font choices) from the brand, not a guess from screenshots.
+   Swap these HSL values once those are available. */
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -17,8 +17,8 @@ export default function App() {
     <div className="min-h-screen bg-background p-4 text-foreground">
       <header className="mb-4 flex items-start justify-between gap-2">
         <div>
-          <h1 className="text-lg font-semibold">Talk to CRM</h1>
-          <p className="text-sm text-muted-foreground">Voice coaching for HubSpot &amp; Pipedrive deals.</p>
+          <h1 className="text-lg font-semibold">Corner</h1>
+          <p className="text-sm text-muted-foreground">The private deal coach you talk to.</p>
         </div>
         {session && (
           <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>

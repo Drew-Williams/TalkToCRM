@@ -24,8 +24,8 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
           <CardTitle>No deal detected</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          Open a HubSpot or Pipedrive deal in this window to get started. Talk to CRM reads the deal straight off the
-          page you're on — nothing to install on the CRM side.
+          Open a HubSpot or Pipedrive deal in this window to get started. Corner reads the deal straight off the page
+          you're on — nothing to install on the CRM side.
         </CardContent>
       </Card>
     );
@@ -60,8 +60,8 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
         <p className="text-xs text-muted-foreground">
-          CRM writes aren't wired up yet — the "Talk to CRM" card below can read this deal out loud, but can't change
-          anything in {crmName} yet.
+          CRM writes aren't wired up yet — the "Talk it through" card below can read this deal out loud, but can't
+          change anything in {crmName} yet.
         </p>
       </CardContent>
     </Card>
