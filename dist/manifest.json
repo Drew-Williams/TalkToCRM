@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Talk to CRM",
-  "description": "Voice-first sales coaching that reads live HubSpot/Pipedrive deal data and coaches the rep out loud — no chat UI, no silent CRM writes.",
+  "name": "Corner",
+  "description": "The private deal coach you talk to — reads live HubSpot/Pipedrive deal data and coaches you out loud, no chat UI, no silent CRM writes.",
   "version": "0.1.0",
   "icons": {
     "16": "icons/icon-16.png",
@@ -9,7 +9,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "Talk to CRM"
+    "default_title": "Corner"
   },
   "background": {
     "service_worker": "service-worker-loader.js",
