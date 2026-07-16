@@ -8,6 +8,43 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Chrome only auto-injects content_scripts into tabs navigated to *after*
+// install/reload — a HubSpot/Pipedrive tab that was already open keeps
+// running no content script (fresh install) or the previous version's
+// (an in-place "reload" of the same unpacked extension) until manually
+// refreshed, which is what made the side panel get stuck on "No deal
+// detected" after every reload during testing. Reading the content script
+// list from the manifest (rather than hardcoding file paths) means this
+// keeps working regardless of the hashed build filenames CRXJS produces.
+chrome.runtime.onInstalled.addListener(async () => {
+  const manifest = chrome.runtime.getManifest();
+  for (const script of manifest.content_scripts ?? []) {
+    if (!script.js?.length || !script.matches?.length) continue;
+    const tabs = await chrome.tabs.query({ url: script.matches });
+    for (const tab of tabs) {
+      if (tab.id === undefined) continue;
+      // An in-place "reload" (same extension id, not a fresh install into a
+      // new folder) leaves the *previous* version's content script alive
+      // and still responsive in already-open tabs — re-injecting on top of
+      // that would run the module-level code (history.pushState patching,
+      // the initial detect-and-report, the 1.5s poll) a second time in the
+      // same isolated world. Ping first; only inject if nothing answers.
+      const alreadyAlive = await chrome.tabs
+        .sendMessage(tab.id, { type: "GET_CURRENT_DEAL" })
+        .then(() => true)
+        .catch(() => false);
+      if (alreadyAlive) continue;
+
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: script.js }).catch((err) => {
+        // Tab navigated away/closed between query and inject, or it's a
+        // page scripting can't touch (e.g. a Chrome Web Store preview) —
+        // not fatal, a manual refresh is still the fallback.
+        console.warn("[background] failed to inject content script into tab", tab.id, err);
+      });
+    }
+  }
+});
+
 // In-memory cache only. MV3 service workers get evicted whenever Chrome
 // feels like it, so this map can be empty even for a tab that already has a
 // detected deal — resolveActiveDeal() below falls back to asking the content

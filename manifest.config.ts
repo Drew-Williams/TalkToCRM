@@ -44,7 +44,14 @@ export default defineManifest({
   // "identity" is for chrome.identity.launchWebAuthFlow (HubSpot/Pipedrive
   // OAuth connect) — it does NOT grant access to Google account info the
   // way chrome.identity.getAuthToken would; we never call that API.
-  permissions: ["sidePanel", "identity"],
+  //
+  // "scripting" is so background/index.ts can proactively inject the
+  // content scripts below into HubSpot/Pipedrive tabs that were already
+  // open *before* the extension was installed/reloaded — Chrome only auto-
+  // injects content_scripts into tabs navigated to afterwards, so without
+  // this, every reload during development leaves already-open deal tabs
+  // stuck on "No deal detected" until manually refreshed.
+  permissions: ["sidePanel", "identity", "scripting"],
 
   host_permissions: ["https://app.hubspot.com/*", "https://*.pipedrive.com/*"],
 
