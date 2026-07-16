@@ -1,10 +1,12 @@
 import { useActiveDeal } from "./hooks/useActiveDeal";
 import { useSupabaseSession } from "./hooks/useSupabaseSession";
 import { useCrmConnections } from "./hooks/useCrmConnections";
+import { useSubscription } from "./hooks/useSubscription";
 import { DealStatusCard } from "./components/DealStatusCard";
 import { SignInView } from "./components/SignInView";
 import { ConnectCrmCard } from "./components/ConnectCrmCard";
 import { TalkToCrmCard } from "./components/TalkToCrmCard";
+import { SubscriptionGate } from "./components/SubscriptionGate";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase/client";
 
@@ -12,6 +14,7 @@ export default function App() {
   const { deal, loading: dealLoading } = useActiveDeal();
   const { session, loading: sessionLoading } = useSupabaseSession();
   const { connections, loading: connectionsLoading, refresh: refreshConnections } = useCrmConnections(!!session);
+  const { subscription, isActive: subscriptionActive, loading: subscriptionLoading } = useSubscription(!!session);
 
   return (
     <div className="min-h-screen bg-background p-4 text-foreground">
@@ -31,6 +34,10 @@ export default function App() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : !session ? (
         <SignInView />
+      ) : subscriptionLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : !subscriptionActive ? (
+        <SubscriptionGate subscription={subscription} />
       ) : (
         <>
           <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
