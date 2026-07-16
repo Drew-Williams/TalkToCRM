@@ -9,6 +9,16 @@ export interface DealContact {
   email: string | null;
 }
 
+export interface DealActivity {
+  /** e.g. "call", "meeting", "email", "task" (provider-specific string, not normalized further). */
+  type: string | null;
+  subject: string | null;
+  /** Plain text — HTML markup from the CRM's rich-text note editor is stripped. */
+  note: string | null;
+  occurredAt: string | null;
+  done: boolean | null;
+}
+
 export interface DealSnapshot {
   provider: "hubspot" | "pipedrive";
   dealId: string;
@@ -45,4 +55,6 @@ export interface CrmAdapter {
     apiBase: string | null;
   } | null>;
   getDeal(accessToken: string, dealId: string, apiBase: string | null): Promise<DealSnapshot>;
+  /** Most recent activities (calls, meetings, etc.) logged against the deal, newest first. */
+  getRecentActivities(accessToken: string, dealId: string, apiBase: string | null, limit: number): Promise<DealActivity[]>;
 }

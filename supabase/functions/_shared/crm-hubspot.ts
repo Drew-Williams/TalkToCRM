@@ -3,7 +3,7 @@
 // here instead of a GET redirect callback: the extension uses
 // chrome.identity.launchWebAuthFlow, which requires the token exchange to
 // happen via a POST the extension itself calls, not a browser redirect).
-import type { CrmAdapter, DealContact, DealSnapshot } from "./deal-snapshot.ts";
+import type { CrmAdapter, DealActivity, DealContact, DealSnapshot } from "./deal-snapshot.ts";
 
 const HUBSPOT_CLIENT_ID = Deno.env.get("HUBSPOT_CLIENT_ID") ?? "";
 const HUBSPOT_CLIENT_SECRET = Deno.env.get("HUBSPOT_CLIENT_SECRET") ?? "";
@@ -76,6 +76,70 @@ async function fetchContacts(accessToken: string, dealId: string): Promise<DealC
       name: [c.properties?.firstname, c.properties?.lastname].filter(Boolean).join(" ") || null,
       title: c.properties?.jobtitle ?? null,
       email: c.properties?.email ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Each engagement type is its own CRM object in HubSpot (no single
+// "activities" endpoint like Pipedrive's), each with its own body/subject
+// property names. NOTE: unlike the rest of this file, this is unverified
+// against a real HubSpot account — no HubSpot OAuth credentials exist yet
+// (see the PR this shipped in), so this follows the same
+// associations-then-batch-read pattern as fetchContacts below and HubSpot's
+// documented property names, but hasn't been exercised against a live deal.
+const ENGAGEMENT_TYPES: Array<{
+  objectType: "calls" | "meetings" | "notes" | "emails";
+  subjectProp: string | null;
+  bodyProp: string;
+  timestampProp: string;
+}> = [
+  { objectType: "calls", subjectProp: "hs_call_title", bodyProp: "hs_call_body", timestampProp: "hs_timestamp" },
+  { objectType: "meetings", subjectProp: "hs_meeting_title", bodyProp: "hs_meeting_body", timestampProp: "hs_timestamp" },
+  { objectType: "notes", subjectProp: null, bodyProp: "hs_note_body", timestampProp: "hs_timestamp" },
+  { objectType: "emails", subjectProp: "hs_email_subject", bodyProp: "hs_email_text", timestampProp: "hs_timestamp" },
+];
+
+function stripHtml(html: string | null | undefined): string | null {
+  if (!html) return null;
+  const text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+  return text || null;
+}
+
+async function fetchEngagements(
+  accessToken: string,
+  dealId: string,
+  engagement: (typeof ENGAGEMENT_TYPES)[number],
+): Promise<DealActivity[]> {
+  try {
+    const assocRes = await fetch(`${API_BASE}/crm/v4/objects/deals/${dealId}/associations/${engagement.objectType}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!assocRes.ok) return [];
+    const assocData = await assocRes.json();
+    const ids: string[] = (assocData.results ?? []).map((r: { toObjectId: number | string }) => String(r.toObjectId)).slice(0, 10);
+    if (ids.length === 0) return [];
+
+    const properties = [engagement.timestampProp, engagement.bodyProp, ...(engagement.subjectProp ? [engagement.subjectProp] : [])];
+    const batchRes = await fetch(`${API_BASE}/crm/v3/objects/${engagement.objectType}/batch/read`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ inputs: ids.map((id) => ({ id })), properties }),
+    });
+    if (!batchRes.ok) return [];
+    const batchData = await batchRes.json();
+    return (batchData.results ?? []).map((r: { properties?: Record<string, string> }) => ({
+      type: engagement.objectType,
+      subject: (engagement.subjectProp && r.properties?.[engagement.subjectProp]) ?? null,
+      note: stripHtml(r.properties?.[engagement.bodyProp]),
+      occurredAt: r.properties?.[engagement.timestampProp] ?? null,
+      done: null, // HubSpot engagements don't have a single boolean "done" concept the way Pipedrive activities do
     }));
   } catch {
     return [];
@@ -173,5 +237,13 @@ export const hubspotAdapter: CrmAdapter = {
       description: props.description ?? null,
       fetchedAt: new Date().toISOString(),
     };
+  },
+
+  async getRecentActivities(accessToken, dealId, _apiBase, limit): Promise<DealActivity[]> {
+    const results = await Promise.all(ENGAGEMENT_TYPES.map((engagement) => fetchEngagements(accessToken, dealId, engagement)));
+    return results
+      .flat()
+      .sort((a, b) => (b.occurredAt ?? "").localeCompare(a.occurredAt ?? ""))
+      .slice(0, limit);
   },
 };

@@ -60,10 +60,36 @@ function broadcastActiveDealUpdate(tabId: number, deal: DetectedDeal | null) {
   });
 }
 
+// `chrome.tabs.query({ active: true, currentWindow: true })` needs an
+// actually-OS-focused Chrome window to resolve "current" against — when the
+// rep clicks into a different application entirely (not a different Chrome
+// tab), Chrome can momentarily report no focused window at all, and that
+// query returns nothing. That was surfacing as the side panel flipping to
+// "No deal detected" just from clicking away, even though the active *tab*
+// never actually changed. Tracked separately here and only ever updated by
+// a genuine tab activation, lastActiveTabId is immune to that: OS focus
+// loss/regain never touches it, so it keeps pointing at the right tab the
+// whole time the rep is away.
+let lastActiveTabId: number | null = null;
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  lastActiveTabId = tabId;
+});
+
+async function resolveActiveTabId(): Promise<number | null> {
+  if (lastActiveTabId !== null) return lastActiveTabId;
+  // Cold start (service worker just woke up, no onActivated event seen yet)
+  // — bootstrap once from Chrome's own memory of its last-focused window,
+  // which (unlike currentWindow) doesn't require a window to be OS-focused
+  // right now, only to have been focused at some point.
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true }).catch(() => [] as chrome.tabs.Tab[]);
+  lastActiveTabId = tab?.id ?? null;
+  return lastActiveTabId;
+}
+
 async function resolveActiveDeal(): Promise<Extract<ExtensionMessage, { type: "ACTIVE_DEAL_RESULT" }>> {
-  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const tabId = activeTab?.id;
-  if (tabId === undefined) {
+  const tabId = await resolveActiveTabId();
+  if (tabId === null) {
     return { type: "ACTIVE_DEAL_RESULT", deal: null, tabId: null };
   }
 
@@ -110,4 +136,5 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   dealsByTabId.delete(tabId);
+  if (lastActiveTabId === tabId) lastActiveTabId = null;
 });

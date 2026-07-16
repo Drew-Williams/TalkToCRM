@@ -74,8 +74,10 @@ Deno.serve(async (req) => {
     if (!dealId || typeof dealId !== "string") {
       return jsonResponse({ error: "dealId is required" }, { status: 400 });
     }
-    if (action && action !== "get_deal") {
-      // Placeholder for push_to_crm, added when writes land (step 4/5).
+    // "get_recent_activities" backs the client tool of the same name already
+    // configured on the ElevenLabs agent. push_to_crm (writes) still has no
+    // action here — that's step 4/5.
+    if (action && action !== "get_deal" && action !== "get_recent_activities") {
       return jsonResponse({ error: `Unsupported action: ${action}` }, { status: 400 });
     }
 
@@ -97,8 +99,13 @@ Deno.serve(async (req) => {
 
     const adapter = ADAPTERS[provider as "hubspot" | "pipedrive"];
     const { accessToken, apiBase } = await getFreshAccessToken(adapter, connection as ConnectionRow);
-    const snapshot = await adapter.getDeal(accessToken, dealId, apiBase);
 
+    if (action === "get_recent_activities") {
+      const activities = await adapter.getRecentActivities(accessToken, dealId, apiBase, 5);
+      return jsonResponse({ activities });
+    }
+
+    const snapshot = await adapter.getDeal(accessToken, dealId, apiBase);
     return jsonResponse({ deal: snapshot });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

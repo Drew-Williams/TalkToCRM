@@ -1,7 +1,7 @@
 // Pipedrive adapter — read-only for step 2. See crm-hubspot.ts for why OAuth
 // token exchange happens via a POST the extension calls (chrome.identity)
 // rather than a GET redirect callback.
-import type { CrmAdapter, DealContact, DealSnapshot } from "./deal-snapshot.ts";
+import type { CrmAdapter, DealActivity, DealContact, DealSnapshot } from "./deal-snapshot.ts";
 
 const PIPEDRIVE_CLIENT_ID = Deno.env.get("PIPEDRIVE_CLIENT_ID") ?? "";
 const PIPEDRIVE_CLIENT_SECRET = Deno.env.get("PIPEDRIVE_CLIENT_SECRET") ?? "";
@@ -11,7 +11,7 @@ function authHeader(): string {
   return `Basic ${btoa(`${PIPEDRIVE_CLIENT_ID}:${PIPEDRIVE_CLIENT_SECRET}`)}`;
 }
 
-async function fetchContacts(apiBase: string, accessToken: string, dealId: string): Promise<DealContact[]> {
+async function fetchParticipants(apiBase: string, accessToken: string, dealId: string): Promise<DealContact[]> {
   try {
     const res = await fetch(`${apiBase}/api/v2/deals/${dealId}/participants`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -30,6 +30,46 @@ async function fetchContacts(apiBase: string, accessToken: string, dealId: strin
   } catch {
     return [];
   }
+}
+
+// A deal's primary contact (deal.person_id) is a *separate* relationship
+// from "participants" above — plenty of real deals have a person_id set but
+// no participants at all (confirmed against a real deal), which was making
+// contacts come back empty even though the deal clearly showed a linked
+// person in Pipedrive's own UI. Only used as a fallback when there are no
+// participants, to avoid listing the same person twice if they're already
+// a participant.
+async function fetchPrimaryContact(apiBase: string, accessToken: string, personId: number): Promise<DealContact | null> {
+  try {
+    const res = await fetch(`${apiBase}/api/v2/persons/${personId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    const person = (await res.json()).data;
+    if (!person) return null;
+    const emails = person.emails as Array<{ value: string; primary?: boolean }> | undefined;
+    return {
+      name: person.name ?? null,
+      title: null, // Pipedrive persons have no job-title field by default
+      email: emails?.find((e) => e.primary)?.value ?? emails?.[0]?.value ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Strips the CRM's rich-text note markup down to plain text for the agent
+// to read out loud — a raw "&nbsp;<br><br>" in a spoken response would be
+// read literally by the TTS voice.
+function stripHtml(html: string | null | undefined): string | null {
+  if (!html) return null;
+  const text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+  return text || null;
 }
 
 // The v2 /deals/{id} response only includes raw stage_id/pipeline_id
@@ -126,11 +166,17 @@ export const pipedriveAdapter: CrmAdapter = {
     const data = await res.json();
     const deal = data.data ?? {};
 
-    const [contacts, stageName, pipelineName] = await Promise.all([
-      fetchContacts(base, accessToken, dealId),
+    const [participants, stageName, pipelineName] = await Promise.all([
+      fetchParticipants(base, accessToken, dealId),
       deal.stage_id != null ? fetchName(base, accessToken, "stages", deal.stage_id) : Promise.resolve(null),
       deal.pipeline_id != null ? fetchName(base, accessToken, "pipelines", deal.pipeline_id) : Promise.resolve(null),
     ]);
+
+    let contacts = participants;
+    if (contacts.length === 0 && deal.person_id != null) {
+      const primary = await fetchPrimaryContact(base, accessToken, deal.person_id);
+      if (primary) contacts = [primary];
+    }
 
     return {
       provider: "pipedrive",
@@ -141,11 +187,40 @@ export const pipedriveAdapter: CrmAdapter = {
       amountCents: deal.value != null ? Math.round(Number(deal.value) * 100) : null,
       currency: deal.currency ?? null,
       closeDate: deal.expected_close_date ?? null,
-      ownerName: deal.owner_id?.name ?? null,
+      // owner_id is also a raw numeric id in v2 (same as stage_id/pipeline_id
+      // above), so `.name` never resolves — leaving this null rather than a
+      // meaningless number. A GET /api/v2/users/{id} lookup (same pattern as
+      // fetchName above) 403'd with "Scope and URL mismatch" when tried
+      // against this OAuth app's granted scopes, so resolving it properly
+      // needs a broader Pipedrive scope, not just a code change.
+      ownerName: null,
       lastActivityAt: deal.last_activity_date ?? null,
       contacts,
       description: null, // Pipedrive deals have no free-text description field by default
       fetchedAt: new Date().toISOString(),
     };
+  },
+
+  async getRecentActivities(accessToken, dealId, apiBase, limit): Promise<DealActivity[]> {
+    const base = apiBase ?? DEFAULT_API_BASE;
+    const res = await fetch(`${base}/api/v2/activities?deal_id=${dealId}&limit=${Math.max(1, limit)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      throw new Error(`Pipedrive get activities failed (${res.status}): ${await res.text()}`);
+    }
+    const data = await res.json();
+    const activities = (data.data ?? []) as Array<Record<string, unknown>>;
+
+    return activities
+      .map((a) => ({
+        type: (a.type as string) ?? null,
+        subject: (a.subject as string) ?? null,
+        note: stripHtml(a.note as string | null | undefined),
+        occurredAt: (a.marked_as_done_time as string) || (a.due_date as string) || null,
+        done: typeof a.done === "boolean" ? a.done : null,
+      }))
+      .sort((a, b) => (b.occurredAt ?? "").localeCompare(a.occurredAt ?? ""))
+      .slice(0, limit);
   },
 };
