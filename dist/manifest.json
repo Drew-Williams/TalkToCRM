@@ -20,7 +20,8 @@
   },
   "permissions": [
     "sidePanel",
-    "identity"
+    "identity",
+    "scripting"
   ],
   "host_permissions": [
     "https://app.hubspot.com/*",
