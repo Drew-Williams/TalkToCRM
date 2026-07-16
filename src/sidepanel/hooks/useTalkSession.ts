@@ -23,6 +23,11 @@ export function useTalkSession(deal: DetectedDeal | null) {
   const [mode, setMode] = useState<"speaking" | "listening">("listening");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Distinct from `error` so the UI can show a specific "fix it" button
+  // instead of just plain text — this is the one failure mode with an exact,
+  // guaranteed-correct fix (a specific settings page to visit), not just an
+  // explanation. See openMicrophoneSettings() in TalkToCrmCard.tsx.
+  const [micBlocked, setMicBlocked] = useState(false);
 
   const dealRef = useRef(deal);
   dealRef.current = deal;
@@ -31,6 +36,7 @@ export function useTalkSession(deal: DetectedDeal | null) {
 
   const start = useCallback(async () => {
     setError(null);
+    setMicBlocked(false);
     setTranscript([]);
     setStatus("connecting");
     try {
@@ -43,14 +49,21 @@ export function useTalkSession(deal: DetectedDeal | null) {
       // this, not before. Once granted, permission persists at the
       // extension's origin, so @elevenlabs/client's own later getUserMedia
       // call (inside startSession) resolves instantly with no second prompt.
+      //
+      // In practice this prompt sometimes never visibly appears at all —
+      // Chrome auto-denies without showing anything, leaving the origin
+      // permanently blocked until manually changed in chrome://settings.
+      // There's no code fix for that (it's a real, documented Chrome/
+      // extension-context quirk, not a bug in this app), so micBlocked
+      // drives a direct link to the exact fix rather than just an
+      // explanation the rep has to act on themselves.
       try {
         const warmupStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         warmupStream.getTracks().forEach((track) => track.stop());
       } catch {
         setStatus("ended");
-        setError(
-          "Microphone access was blocked. Click the lock/info icon in the address bar (or chrome://extensions), allow the microphone for this extension, then try again.",
-        );
+        setMicBlocked(true);
+        setError("Microphone access is blocked for this extension.");
         return;
       }
 
@@ -93,5 +106,5 @@ export function useTalkSession(deal: DetectedDeal | null) {
     };
   }, []);
 
-  return { status, mode, transcript, error, start, end };
+  return { status, mode, transcript, error, micBlocked, start, end };
 }
