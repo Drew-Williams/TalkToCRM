@@ -72,6 +72,62 @@ function stripHtml(html: string | null | undefined): string | null {
   return text || null;
 }
 
+// Pipedrive's standalone "Notes" are a separate resource from activities'
+// own `note` field above — a deal can have either, both, or neither.
+// Covered by the deals:read scope already granted (confirmed: no separate
+// notes:read scope exists), unlike mail below.
+async function fetchNotes(apiBase: string, accessToken: string, dealId: string): Promise<DealActivity[]> {
+  try {
+    const res = await fetch(`${apiBase}/v1/notes?deal_id=${dealId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data.data ?? []) as Array<Record<string, unknown>>).map((n) => ({
+      type: "note",
+      subject: null,
+      note: stripHtml(n.content as string | null | undefined),
+      occurredAt: (n.add_time as string) ?? null,
+      done: null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Requires the mail:read scope (already granted on this connection) and a
+// mail connection set up on the connected Pipedrive user's account — if
+// neither the rep nor their team has connected a mailbox to Pipedrive, this
+// always returns empty, which isn't distinguishable here from "no emails
+// yet" (both are non-fatal either way). Uses the message list's `snippet`
+// (a plain-text preview, already HTML-free, capped at 225 characters by
+// Pipedrive) rather than fetching each message's full body — an extra
+// request per email for what would still need HTML-stripping isn't worth
+// it for a spoken summary.
+async function fetchEmails(apiBase: string, accessToken: string, dealId: string): Promise<DealActivity[]> {
+  try {
+    const res = await fetch(`${apiBase}/v1/deals/${dealId}/mailMessages`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data.data ?? []) as Array<Record<string, unknown>>).map((m) => {
+      const from = (m.from as Array<{ name?: string; email_address?: string }> | undefined)?.[0];
+      const fromLabel = from?.name || from?.email_address || null;
+      const snippet = (m.snippet as string) ?? null;
+      return {
+        type: "email",
+        subject: (m.subject as string) ?? null,
+        note: [fromLabel ? `From ${fromLabel}:` : null, snippet].filter(Boolean).join(" ") || null,
+        occurredAt: (m.message_time as string) ?? null,
+        done: null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 // The v2 /deals/{id} response only includes raw stage_id/pipeline_id
 // integers, not nested name objects (unlike v1) — so a friendly stage/
 // pipeline name needs its own lookup. Best-effort: falls back to the raw
@@ -201,25 +257,36 @@ export const pipedriveAdapter: CrmAdapter = {
     };
   },
 
+  // Merges three genuinely separate Pipedrive resources into one
+  // chronological feed — matching this tool's own description in the
+  // ElevenLabs dashboard, which already lists "an email, call, note, or
+  // meeting" as the things it should be able to answer for. Each source is
+  // best-effort (a failure in one doesn't drop the others); the combined
+  // list is what actually gets capped to `limit`, not each source
+  // individually, so a request for "the last 3 things that happened" can
+  // mix types correctly instead of e.g. always showing 3 activities before
+  // any notes/emails are even considered.
   async getRecentActivities(accessToken, dealId, apiBase, limit): Promise<DealActivity[]> {
     const base = apiBase ?? DEFAULT_API_BASE;
-    const res = await fetch(`${base}/api/v2/activities?deal_id=${dealId}&limit=${Math.max(1, limit)}`, {
+
+    const activitiesRes = await fetch(`${base}/api/v2/activities?deal_id=${dealId}&limit=${Math.max(1, limit)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!res.ok) {
-      throw new Error(`Pipedrive get activities failed (${res.status}): ${await res.text()}`);
+    if (!activitiesRes.ok) {
+      throw new Error(`Pipedrive get activities failed (${activitiesRes.status}): ${await activitiesRes.text()}`);
     }
-    const data = await res.json();
-    const activities = (data.data ?? []) as Array<Record<string, unknown>>;
+    const activitiesData = await activitiesRes.json();
+    const activities = ((activitiesData.data ?? []) as Array<Record<string, unknown>>).map((a) => ({
+      type: (a.type as string) ?? null,
+      subject: (a.subject as string) ?? null,
+      note: stripHtml(a.note as string | null | undefined),
+      occurredAt: (a.marked_as_done_time as string) || (a.due_date as string) || null,
+      done: typeof a.done === "boolean" ? a.done : null,
+    }));
 
-    return activities
-      .map((a) => ({
-        type: (a.type as string) ?? null,
-        subject: (a.subject as string) ?? null,
-        note: stripHtml(a.note as string | null | undefined),
-        occurredAt: (a.marked_as_done_time as string) || (a.due_date as string) || null,
-        done: typeof a.done === "boolean" ? a.done : null,
-      }))
+    const [notes, emails] = await Promise.all([fetchNotes(base, accessToken, dealId), fetchEmails(base, accessToken, dealId)]);
+
+    return [...activities, ...notes, ...emails]
       .sort((a, b) => (b.occurredAt ?? "").localeCompare(a.occurredAt ?? ""))
       .slice(0, limit);
   },
