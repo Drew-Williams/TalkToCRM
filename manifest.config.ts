@@ -17,8 +17,13 @@ import pkg from "./package.json";
 export default defineManifest({
   manifest_version: 3,
   name: "Corner",
+  // Chrome Web Store hard-caps manifest "description" at 132 characters —
+  // separate from (and much shorter than) the store listing's own
+  // "detailed description" field, which has no such limit. Keep this one
+  // terse; the fuller pitch lives in docs/chrome-web-store-listing.md for
+  // the listing itself.
   description:
-    "The private deal coach you talk to — reads live HubSpot/Pipedrive deal data and coaches you out loud, no chat UI, no silent CRM writes.",
+    "The private deal coach you talk to — reads live HubSpot/Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
   version: pkg.version,
 
   // Deliberately NOT under public/ — Vite auto-copies that dir's contents to

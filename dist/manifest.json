@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Corner",
-  "description": "The private deal coach you talk to — reads live HubSpot/Pipedrive deal data and coaches you out loud, no chat UI, no silent CRM writes.",
+  "description": "The private deal coach you talk to — reads live HubSpot/Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
   "version": "0.1.0",
   "icons": {
     "16": "icons/icon-16.png",
