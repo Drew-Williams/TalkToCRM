@@ -7,16 +7,10 @@ the marketing site.
 
 ## Before you can submit
 
-1. Register a [Chrome Web Store developer account](https://chrome.google.com/webstore/devconsole) — one-time $5 fee.
-2. Have the privacy policy below live at a real, public URL (the marketing
-   site's existing footer "Privacy policy" link is the natural place —
-   Chrome requires linking to it, not just pasting text into their form).
-3. Capture at least one real screenshot of the side panel in use (1280×800
-   or 640×400 px) and ideally a promo tile (440×280 px) — these need actual
-   product screenshots, which this agent can't generate; take them from a
-   real loaded session (e.g. the "Talk it through" card mid-conversation,
-   or a deal detected view).
-4. Have `dist/` built and zipped as the upload package.
+1. ✅ Register a [Chrome Web Store developer account](https://chrome.google.com/webstore/devconsole) — one-time $5 fee.
+2. Get the privacy policy below live at a real, public URL — `mycornercoach.com/privacy` is the natural place (the marketing site's footer already links there). Chrome requires linking to a live page, not just pasting text into their form.
+3. Capture at least one real screenshot of the side panel in use (1280×800 or 640×400 px) and ideally a promo tile (440×280 px) — these need actual product screenshots, which this agent can't generate; take them from a real loaded session (e.g. the "Talk it through" card mid-conversation, or a deal detected view).
+4. Have `dist/` built and zipped as the upload package — see "Submitting" below for exact steps.
 
 ## Store listing copy
 
@@ -42,7 +36,7 @@ sub-category at submission time)
 > - Deal data is fetched live for each conversation; Corner does not maintain its own copy of your CRM database.
 > - See our Privacy Policy for full details.
 >
-> Corner requires a HubSpot or Pipedrive account to connect, and a Corner account (sign in with your email) to use.
+> Install and start talking immediately — no sign-up, no card. Your first 7 days of Corner Pro are free, starting the moment you open the side panel. Add your email anytime to keep your sessions if you switch computers, and connect HubSpot or Pipedrive whenever you're ready to talk through a real deal.
 
 ## Permission justifications
 
@@ -69,12 +63,12 @@ collects/uses. Accurate answers for Corner:
 
 | Category | Collected? | Notes |
 | --- | --- | --- |
-| Personally identifiable information | Yes | Email address, for Corner account sign-in (Supabase email-OTP). |
+| Personally identifiable information | Yes | An anonymous account is created automatically on first use — no email required. An email address is only collected if the user chooses to link one (to keep their account recoverable) or when starting a paid plan. |
 | Authentication information | Yes | OAuth tokens for the connected CRM(s), stored server-side (Supabase), never in the extension itself. |
 | Website content | Yes | Deal data read from the HubSpot/Pipedrive page/API the user is viewing. |
 | Location | No | |
 | Health info | No | |
-| Financial info | No | Stripe handles payment directly; Corner never sees card details. |
+| Financial info | Yes | Only if/when the user starts a paid plan — payment is handled entirely by Stripe's own hosted checkout; Corner never receives or stores card details. |
 | Personal communications | Yes | Recent CRM activity the user asks about — calls, notes, emails logged in their own CRM (not the user's personal email/messages outside the CRM). |
 | Web browsing history | No | Corner only reads the current HubSpot/Pipedrive tab's content, not browsing history. |
 
@@ -86,6 +80,56 @@ extension's core function — both true for Corner.
 entire extension (all JS) is bundled at build time and reviewed as part of
 the submission, matching Chrome's Manifest V3 requirements. Confirm "No" on
 the remote code declaration.
+
+## Privacy policy
+
+Full text to put on `mycornercoach.com/privacy` (paste into Lovable, or hand
+this to whoever's editing that project):
+
+> ## Corner Privacy Policy
+>
+> *Last updated: [fill in the date you publish this]*
+>
+> Corner ("we," "our," "the extension") is a Chrome extension that reads live CRM deal data and coaches sales reps out loud. This policy explains what data Corner collects, why, and how it's handled.
+>
+> ### What we collect
+>
+> - **Account data.** When you install Corner, an anonymous account is created automatically — no email or personal information is required to start using it. If you choose to add an email (to keep your account if you switch computers or clear browser data), or when you start a paid plan, we store that email address.
+> - **CRM connection data.** If you connect a HubSpot or Pipedrive account, we store the OAuth access/refresh tokens for that connection on our servers (Supabase), encrypted at rest. These tokens are never sent to or stored in the extension itself, and never leave our servers except to call HubSpot's or Pipedrive's own API on your behalf.
+> - **Deal data.** When you ask Corner about a deal, it fetches that deal's data (name, stage, value, contacts, recent calls/notes/emails) live from your connected CRM for that conversation. Corner does not maintain its own permanent copy of your CRM database.
+> - **Payment data.** If you upgrade to a paid plan, payment is processed entirely by Stripe. Corner never receives or stores your card details — only Stripe's confirmation that a subscription is active.
+> - **Voice data.** Conversations with Corner's voice agent are processed by ElevenLabs (our voice AI provider) to enable the real-time conversation. We do not separately record or store your voice audio.
+>
+> ### What we don't do
+>
+> - We do not sell your data to any third party.
+> - We do not use your CRM data, deal information, or conversations for advertising.
+> - We do not read or access any website other than the HubSpot/Pipedrive page you're actively viewing.
+> - Corner does not write to, modify, or delete anything in your CRM without your explicit, spoken confirmation during a conversation.
+>
+> ### Data retention and deletion
+>
+> You can disconnect a CRM connection at any time from Corner's side panel, which deletes the stored OAuth tokens for that connection. To request full deletion of your account and all associated data, contact us at [fill in a real support/contact email].
+>
+> ### Changes to this policy
+>
+> We'll update the "last updated" date above if this policy changes, and post the updated version here.
+>
+> ### Contact
+>
+> Questions about this policy or your data: [fill in a real support/contact email].
+
+## Submitting (now that the developer account is registered)
+
+1. **Build and zip the upload package.**
+   - Pull the latest `dist/` from the `cursor/crm-proxy-oauth-52ee` branch (or wherever this has since merged to).
+   - Zip the *contents* of `dist/` (not the `dist` folder itself — `manifest.json` needs to be at the root of the zip, not one level down).
+2. Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) → **New item** → upload that zip.
+3. **Store listing tab**: paste in the name/short description/detailed description from above, pick a category, upload the screenshot(s) (see "Before you can submit" #3 — these still need to be captured from a real running session), and use `icons/icon-128.png` from `dist/` as the store icon if it asks for one separately.
+4. **Privacy practices tab**: paste in the permission justifications above, fill in the data-usage disclosure table above, link to `https://mycornercoach.com/privacy` (make sure that page is actually live first — it returned a connection error as of this writing, see the domain/SSL note elsewhere in this PR), and confirm "No remote code."
+5. **Distribution tab**: Visibility → Public (or "Unlisted" first if you want to test the real install flow privately before announcing). Pricing → Free (Corner's own subscription is billed through Stripe inside the extension, not through Chrome's listing price).
+6. **Submit for review.**
+7. Once approved, copy the real listing URL (`https://chromewebstore.google.com/detail/<id>`) and swap it into `chromeStoreUrl` in the Lovable site's `src/content/site.ts`, replacing the placeholder.
 
 ## Why this matters early, not right before "launch day"
 
