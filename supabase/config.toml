@@ -17,10 +17,13 @@ verify_jwt = false
 [functions.elevenlabs-conversation-token]
 verify_jwt = false
 
-# Neither Stripe function has a Supabase JWT to check at all: the checkout
-# session is created before the visitor has an account, and Stripe's own
-# webhook calls authenticate via a signature (verifyStripeSignature), not a
-# bearer token.
+# stripe-create-checkout-session checks the caller's JWT itself (via
+# getCallerUser, same as crm-proxy etc.) rather than relying on the
+# platform's verify_jwt gate, for the same consistent-JSON-error-shape
+# reason as the other functions above — it does still require a real caller,
+# just an anonymous session is a valid one. stripe-webhook has no Supabase
+# JWT to check at all: Stripe's own webhook calls authenticate via a
+# signature (verifyStripeSignature), not a bearer token.
 [functions.stripe-create-checkout-session]
 verify_jwt = false
 

@@ -3,10 +3,10 @@ import { useSupabaseSession } from "./hooks/useSupabaseSession";
 import { useCrmConnections } from "./hooks/useCrmConnections";
 import { useSubscription } from "./hooks/useSubscription";
 import { DealStatusCard } from "./components/DealStatusCard";
-import { SignInView } from "./components/SignInView";
 import { ConnectCrmCard } from "./components/ConnectCrmCard";
 import { TalkToCrmCard } from "./components/TalkToCrmCard";
-import { SubscriptionGate } from "./components/SubscriptionGate";
+import { PaywallView } from "./components/PaywallView";
+import { LinkAccountBanner } from "./components/LinkAccountBanner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase/client";
 
@@ -14,7 +14,18 @@ export default function App() {
   const { deal, loading: dealLoading } = useActiveDeal();
   const { session, loading: sessionLoading } = useSupabaseSession();
   const { connections, loading: connectionsLoading, refresh: refreshConnections } = useCrmConnections(!!session);
-  const { subscription, isActive: subscriptionActive, loading: subscriptionLoading } = useSubscription(!!session);
+  const {
+    subscription,
+    isActive: subscriptionActive,
+    shouldNudge,
+    loading: subscriptionLoading,
+    refresh: refreshSubscription,
+  } = useSubscription(session);
+
+  // An anonymous session has no recovery path at all (no email, no
+  // password) — signing out of one is permanent data loss with no warning,
+  // so the option is hidden until there's a real account to sign back into.
+  const canSignOut = !!session && !session.user.is_anonymous;
 
   return (
     <div className="min-h-screen bg-background p-4 text-foreground">
@@ -23,23 +34,20 @@ export default function App() {
           <h1 className="text-lg font-semibold">Corner</h1>
           <p className="text-sm text-muted-foreground">The private deal coach you talk to.</p>
         </div>
-        {session && (
+        {canSignOut && (
           <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
             Sign out
           </Button>
         )}
       </header>
 
-      {sessionLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : !session ? (
-        <SignInView />
-      ) : subscriptionLoading ? (
+      {sessionLoading || subscriptionLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : !subscriptionActive ? (
-        <SubscriptionGate subscription={subscription} />
+        <PaywallView subscription={subscription} onRefresh={refreshSubscription} />
       ) : (
         <>
+          {shouldNudge && <LinkAccountBanner />}
           <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
           <DealStatusCard deal={deal} loading={dealLoading} />
           <TalkToCrmCard deal={deal} />

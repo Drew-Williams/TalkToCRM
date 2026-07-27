@@ -99,28 +99,53 @@ Deno.serve(async (req) => {
         const session = event.data.object as {
           customer: string;
           subscription: string | null;
+          client_reference_id?: string | null;
           customer_details?: { email?: string };
           metadata?: { signup_email?: string };
         };
         const email = session.customer_details?.email ?? session.metadata?.signup_email;
-        if (!email) {
-          console.error("[stripe-webhook] checkout.session.completed with no email; skipping");
-          break;
-        }
 
-        const userId = await findOrCreateUserByEmail(email);
+        // client_reference_id is the caller's existing user id, set by
+        // stripe-create-checkout-session for every checkout this project
+        // creates post-reverse-trial-pivot — the rep already has an
+        // account (anonymous or permanent) by the time they reach the
+        // day-7 paywall, so this attaches payment to *that* account
+        // instead of finding/creating one by email. The email fallback
+        // below only matters for a checkout session created some other
+        // way (e.g. manually in the Stripe Dashboard) with no
+        // client_reference_id at all.
+        let userId = session.client_reference_id ?? null;
+        if (!userId) {
+          if (!email) {
+            console.error("[stripe-webhook] checkout.session.completed with no client_reference_id or email; skipping");
+            break;
+          }
+          userId = await findOrCreateUserByEmail(email);
+        } else if (email) {
+          // Backfill the email Stripe collected onto this account if it's
+          // still anonymous (skipped the day-5 LinkAccountBanner nudge) —
+          // makes the account recoverable/findable by email going forward.
+          // Best-effort: a failure here shouldn't block recording the
+          // payment itself.
+          await adminFetch(`/auth/v1/admin/users/${userId}`, {
+            method: "PUT",
+            body: JSON.stringify({ email, email_confirm: true }),
+          }).catch((e) => console.error("[stripe-webhook] failed to backfill email onto anonymous user:", e));
+        }
 
         // The subscription's own trial_end/current_period_end are more
         // authoritative than anything on the checkout session, but a
         // customer.subscription.updated event for this same subscription
         // typically follows right behind this one anyway and will correct
-        // these fields — trialing/null here is just a reasonable initial
-        // state, not the final word.
+        // these fields — active/null here is just a reasonable initial
+        // state, not the final word. Status is 'active', not 'trialing':
+        // the 7 free days already happened before this checkout, no
+        // second Stripe-side trial is layered on top.
         await upsertSubscription({
           userId,
           stripeCustomerId: session.customer,
           stripeSubscriptionId: session.subscription,
-          status: "trialing",
+          status: "active",
           trialEnd: null,
           currentPeriodEnd: null,
         });
@@ -136,7 +161,7 @@ Deno.serve(async (req) => {
           trial_end: number | null;
           current_period_end: number | null;
         };
-        const userId = await findOrCreateUserByEmailFromCustomer(subscription.customer);
+        const userId = await findUserIdByStripeCustomerId(subscription.customer);
         if (!userId) break;
         await upsertSubscription({
           userId,
@@ -174,16 +199,14 @@ Deno.serve(async (req) => {
   }
 });
 
-// customer.subscription.* events only carry the Stripe customer id, not an
-// email — this project scopes subscriptions to an existing Supabase user_id,
-// so it looks the customer up by whichever subscriptions row already
-// recorded that stripe_customer_id (written by checkout.session.completed,
-// which does have the email). If no such row exists yet, subscription.
-// created for a given customer should still always follow checkout.session.
-// completed for the same checkout, not race ahead of it, since both are
-// emitted from the same Stripe API call — but if this ever fires first,
+// customer.subscription.* events only carry the Stripe customer id, not the
+// Supabase user id — looks it up by whichever subscriptions row already
+// recorded that stripe_customer_id (written by checkout.session.completed).
+// subscription.created for a given customer should always follow checkout.
+// session.completed for the same checkout, not race ahead of it, since both
+// are emitted from the same Stripe API call — but if this ever fires first,
 // returning null (skip) is the safe choice over guessing.
-async function findOrCreateUserByEmailFromCustomer(stripeCustomerId: string): Promise<string | null> {
+async function findUserIdByStripeCustomerId(stripeCustomerId: string): Promise<string | null> {
   const admin = serviceRoleClient();
   const { data, error } = await admin.from("subscriptions").select("user_id").eq("stripe_customer_id", stripeCustomerId).maybeSingle();
   if (error) {

@@ -13,15 +13,24 @@ Formerly named "Talk to CRM" — renamed to match the marketing site's branding.
 
 - ✅ **Step 1** — deal detection: the extension detects when a rep is on a
   HubSpot or Pipedrive deal page and shows it in the side panel.
-- ✅ **Step 2** — CRM connections: email-OTP sign-in, HubSpot/Pipedrive OAuth
-  connect via `chrome.identity`, and a `crm-proxy` edge function that reads
-  real deal data (summary, contacts, recent calls/notes/emails).
+- ✅ **Step 2** — CRM connections: HubSpot/Pipedrive OAuth connect via
+  `chrome.identity`, and a `crm-proxy` edge function that reads real deal
+  data (summary, contacts, recent calls/notes/emails).
 - ✅ **Step 4** — a live ElevenLabs voice session in the side panel, with
   mid-call tool calling wired to real CRM data via `crm-proxy`.
+- ✅ **Reverse-trial billing** — install-first, no sign-up gate (an
+  anonymous Supabase account starts a 7-day trial automatically), a
+  day-5 nudge to link an email, and a day-7 Stripe paywall. See
+  `mem/design/reverse-trial-v1.md`. Built and deployed, but needs real
+  Stripe secrets (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`,
+  `STRIPE_WEBHOOK_SECRET`) to actually charge a card — see
+  `docs/lovable-integration.md`.
 - ⏳ Not yet built: CRM writes (`push_to_crm`), coaching memory
   (`recall_notebook`, `save_note`), and the playbook (`lookup_playbook`) —
   all four already exist as client tools on the ElevenLabs agent, but have
-  no backend behind them yet.
+  no backend behind them yet. Also not yet built: publishing to the Chrome
+  Web Store (materials drafted in `docs/chrome-web-store-listing.md`, but
+  not yet submitted).
 
 ## Prerequisites
 
@@ -82,7 +91,9 @@ which people can install it with one real click of an "Add to Chrome" button.
 ## Verifying the extension works end to end
 
 1. Load the unpacked extension per above.
-2. Open the side panel (toolbar icon), sign in with email + a 6-digit code.
+2. Open the side panel (toolbar icon) — no sign-in step: an anonymous
+   Supabase account is created silently and a 7-day trial starts
+   automatically (see `mem/design/reverse-trial-v1.md`).
 3. Click "Connect Pipedrive" (or HubSpot) and approve the OAuth consent screen.
 4. Open a real deal — the side panel should show "Deal detected," the
    provider badge, the deal ID, and an "Open in HubSpot/Pipedrive" link.
@@ -102,14 +113,18 @@ which people can install it with one real click of an "Add to Chrome" button.
 - `src/lib/deal-detection/` — pure URL-matching logic (unit tested)
 - `src/lib/crm-connect/` — OAuth connect flow (`chrome.identity.launchWebAuthFlow`)
 - `src/lib/elevenlabs/` — the voice session: conversation token fetch, client tools
+- `src/lib/billing/` — fetches a Stripe Checkout URL for the day-7 paywall
 - `src/lib/chrome/messaging.ts` — the message contract between content scripts, background, and side panel
-- `supabase/migrations/` — `crm_connections`, `crm_writes` (nothing writes to the latter yet)
-- `supabase/functions/` — `crm-proxy`, `*-oauth-exchange`, `elevenlabs-conversation-token`
+- `supabase/migrations/` — `crm_connections`, `crm_writes` (nothing writes to the latter yet), `subscriptions`
+- `supabase/functions/` — `crm-proxy`, `*-oauth-exchange`, `elevenlabs-conversation-token`, `stripe-create-checkout-session`, `stripe-webhook`
 - `mem/` — design notes, mirroring the convention from the main sales-playbook-builder repo
+- `docs/` — Chrome Web Store submission materials and the marketing-site integration spec (not read by the app at runtime)
 
 ## What's NOT here yet
 
 CRM writes, coaching memory, and the playbook (see "Status" above) — all
 four already have client tools configured on the ElevenLabs agent, but no
 backend built for them yet. Also not here: publishing to the Chrome Web
-Store, and any billing/trial integration for a real signup flow.
+Store (materials drafted, not submitted), and real Stripe secrets (the
+billing code is built and deployed but can't charge a real card without
+them — see `docs/lovable-integration.md`).
