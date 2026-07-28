@@ -16,6 +16,16 @@ import pkg from "./package.json";
 // Still no CRM-write permissions of any kind — push_to_crm isn't built yet.
 export default defineManifest({
   manifest_version: 3,
+  // Pins the extension's ID to a fixed value (noljedpanlelibpakngfgmiopmcdhgdo)
+  // regardless of which machine/folder it's unpacked from or how many times
+  // it gets removed and reinstalled. Without this, Chrome derives a random
+  // ID from the install path, which breaks every OAuth redirect URL
+  // registered with Pipedrive/HubSpot each time the extension is reloaded
+  // from a fresh unzip. This is the PUBLIC half of a keypair generated
+  // solely to compute that ID — it grants no other capability and is safe
+  // to commit (Chrome Web Store re-signs with its own key on publish; this
+  // "key" field only matters for local/unpacked installs).
+  key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoj7bR3NJtsnUOHP4wiAkjgNocxNxNChowoXnR0QorKyAF9skjkC7eLglzYyy4OgcEk1Rxb0Jq/6v6kW5tUvfEB+7obqh+lXkxlCWrCzFtfafg2EiVHZ8OlJmYeff6EsrIY3G5m6frg4k7XuAuyrHAS/YHAbuV0fopyK6dlRIWxwntYQbeWnJxD7Lc1T53GA9ImGN+YWT7djR/x33eWHTLfQ+AcSpzq/7ELKSbyEQUeZ6ckCX79zKvShZRL1VLK7OHvpkSajJYeSlBAGzCNbdjlDEBnAC1acTEhzCXPZMN+i/5xvXy1OaRBz33fxI3eLxAR1vdnG4YTS0mvldcZ1OQIDAQAB",
   name: "Corner",
   // Chrome Web Store hard-caps manifest "description" at 132 characters —
   // separate from (and much shorter than) the store listing's own

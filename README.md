@@ -82,6 +82,13 @@ auto-injected into any already-open HubSpot/Pipedrive tabs on install/reload
 (see `src/background/index.ts`), so a stale "No deal detected" on a real deal
 page shouldn't require a manual tab refresh either.
 
+The extension's ID is pinned to `noljedpanlelibpakngfgmiopmcdhgdo` via the
+`key` field in `manifest.config.ts`, so it stays the same no matter how many
+times you remove/reload it or which machine/folder you unpack it in. This is
+what the Pipedrive and HubSpot OAuth apps' redirect URLs are registered
+against (`https://noljedpanlelibpakngfgmiopmcdhgdo.chromiumapp.org/`) — you
+should never need to re-register a redirect URL after a reinstall again.
+
 **This is a developer-only workflow** — there is no way for a website to
 silently or automatically install a Chrome extension for a visitor. Getting
 this in front of real users requires publishing to the Chrome Web Store
