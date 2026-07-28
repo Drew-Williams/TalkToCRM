@@ -32,6 +32,15 @@
     "https://app.hubspot.com/*",
     "https://*.pipedrive.com/*"
   ],
+  "commands": {
+    "toggle-talk": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Start or stop talking to Corner about the open deal"
+    }
+  },
   "content_scripts": [
     {
       "js": [
