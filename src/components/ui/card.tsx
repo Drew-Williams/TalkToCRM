@@ -2,8 +2,20 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+// Translucent "glass" surface over the panel's dark background, rather than
+// a solid opaque card — this is what gives the side panel its HUD look.
+// bg-card/foreground CSS vars still back the color (via the "<alpha-value>"
+// pattern in tailwind.config.ts) so anything relying on plain `bg-card`
+// elsewhere still resolves sensibly.
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-xl border border-white/10 bg-white/[0.04] text-card-foreground shadow-lg shadow-black/20 backdrop-blur-md",
+      className,
+    )}
+    {...props}
+  />
 ));
 Card.displayName = "Card";
 

@@ -1,15 +1,27 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, PhoneOff, TriangleAlert } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTalkSession } from "../hooks/useTalkSession";
+import { useKeyboardShortcutLabel } from "../hooks/useKeyboardShortcutLabel";
 import { openMicrophoneOnboarding, openMicrophoneSettings } from "@/lib/chrome/microphone";
+import { VoiceIndicator, ShimmerBar } from "./VoiceIndicator";
+import { TranscriptCopyButton } from "./TranscriptCopyButton";
+import { cn } from "@/lib/utils";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 
 interface TalkToCrmCardProps {
   deal: DetectedDeal | null;
 }
+
+type VoicePhase = "connecting" | "thinking" | "listening" | "speaking";
+
+const PHASE_LABEL: Record<VoicePhase, string> = {
+  connecting: "Connecting…",
+  thinking: "Thinking…",
+  listening: "Listening…",
+  speaking: "Speaking…",
+};
 
 /**
  * The actual "Talk" experience — an ElevenLabs voice conversation over
@@ -32,52 +44,91 @@ interface TalkToCrmCardProps {
  */
 export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
   const { status, mode, transcript, error, micBlocked, start, end } = useTalkSession(deal);
+  const shortcutLabel = useKeyboardShortcutLabel("toggle-talk");
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+  // The ElevenLabs SDK only reports "speaking"/"listening" — there's no
+  // distinct "thinking" signal. Approximated here as a brief transitional
+  // flash right as the agent picks up to speak, which is when a real LLM
+  // generation delay would actually show up.
+  const [thinking, setThinking] = useState(false);
+  const prevModeRef = useRef(mode);
+  useEffect(() => {
+    if (prevModeRef.current === "listening" && mode === "speaking") {
+      setThinking(true);
+      const timer = setTimeout(() => setThinking(false), 450);
+      prevModeRef.current = mode;
+      return () => clearTimeout(timer);
+    }
+    prevModeRef.current = mode;
+  }, [mode]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
   const isActive = status === "connecting" || status === "connected";
+  const phase: VoicePhase | null = !isActive
+    ? null
+    : status === "connecting"
+      ? "connecting"
+      : thinking
+        ? "thinking"
+        : mode === "speaking"
+          ? "speaking"
+          : "listening";
 
   if (!deal && !isActive) return null;
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle>Talk it through</CardTitle>
-        {status === "connected" && <Badge variant={mode === "speaking" ? "default" : "secondary"}>{mode}</Badge>}
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <Card className="mb-3">
+      <CardContent className="space-y-3 p-3">
         {!isActive && deal && (
-          <Button className="w-full" onClick={start}>
-            <Mic className="h-4 w-4" />
-            Talk about this deal
-          </Button>
+          <button
+            type="button"
+            onClick={start}
+            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-3 text-sm font-semibold text-slate-950 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <span className="pointer-events-none absolute inset-0 rounded-xl animate-pulse-glow" />
+            <Mic className="relative h-4 w-4 shrink-0" />
+            <span className="relative truncate">Talk about this deal</span>
+            {shortcutLabel && (
+              <span className="relative shrink-0 rounded border border-slate-950/25 bg-slate-950/10 px-1.5 py-0.5 font-mono text-[10px] tracking-tight">
+                {shortcutLabel}
+              </span>
+            )}
+          </button>
         )}
 
-        {status === "connecting" && (
-          <p className="text-sm text-muted-foreground">Connecting…</p>
-        )}
-
-        {isActive && (
+        {isActive && phase && (
           <>
-            <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border bg-muted/30 p-2 text-sm">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] py-4">
+              {phase === "connecting" || phase === "thinking" ? <ShimmerBar /> : <VoiceIndicator speaking={phase === "speaking"} />}
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{PHASE_LABEL[phase]}</p>
+            </div>
+
+            <div className="min-h-[3rem] max-h-48 space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm">
               {transcript.length === 0 ? (
-                <p className="text-muted-foreground">Listening…</p>
+                <p className="text-muted-foreground">Live captions will appear here once the conversation gets going…</p>
               ) : (
                 transcript.map((entry) => (
-                  <p key={entry.id}>
-                    <span className="font-medium">{entry.role === "user" ? "You" : "Agent"}: </span>
-                    <span className={entry.role === "agent" ? "text-foreground" : "text-muted-foreground"}>
-                      {entry.text}
-                    </span>
-                  </p>
+                  <div key={entry.id} className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 break-words">
+                      <span className="font-medium text-foreground">{entry.role === "user" ? "You" : "Corner"}: </span>
+                      <span className={entry.role === "agent" ? "text-slate-200" : "text-muted-foreground"}>{entry.text}</span>
+                    </p>
+                    {entry.role === "agent" && <TranscriptCopyButton text={entry.text} />}
+                  </div>
                 ))
               )}
               <div ref={transcriptEndRef} />
             </div>
-            <Button variant="destructive" className="w-full" onClick={end}>
+
+            <Button
+              variant="outline"
+              className={cn("w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive")}
+              onClick={end}
+            >
               <PhoneOff className="h-4 w-4" />
               End call
             </Button>

@@ -87,12 +87,17 @@ export function LinkAccountBanner() {
   if (dismissed) return null;
 
   return (
-    <Card className="mb-4 border-primary/50">
+    <Card className="mb-3 border-primary/40">
       <CardHeader className="flex flex-row items-start justify-between gap-2">
-        <CardTitle className="text-base">
+        <CardTitle className="min-w-0 break-words text-base">
           {stage === "email" ? "Save your sessions" : `Enter the code we emailed to ${email}`}
         </CardTitle>
-        <button type="button" onClick={dismiss} aria-label="Dismiss" className="text-muted-foreground hover:text-foreground">
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Dismiss"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
           <X className="h-4 w-4" />
         </button>
       </CardHeader>

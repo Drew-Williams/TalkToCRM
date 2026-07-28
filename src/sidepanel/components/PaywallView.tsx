@@ -56,7 +56,7 @@ export function PaywallView({ subscription, onRefresh }: PaywallViewProps) {
   const everSubscribed = subscription !== null;
 
   return (
-    <Card>
+    <Card className="mb-3">
       <CardHeader>
         <CardTitle>{everSubscribed ? "Your free trial has ended" : "Upgrade to keep using Corner"}</CardTitle>
         <CardDescription>

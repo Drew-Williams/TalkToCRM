@@ -1,9 +1,12 @@
+import { useState } from "react";
+import { Settings } from "lucide-react";
 import { useActiveDeal } from "./hooks/useActiveDeal";
 import { useSupabaseSession } from "./hooks/useSupabaseSession";
 import { useCrmConnections } from "./hooks/useCrmConnections";
 import { useSubscription } from "./hooks/useSubscription";
 import { DealStatusCard } from "./components/DealStatusCard";
 import { ConnectCrmCard } from "./components/ConnectCrmCard";
+import { CrmStatusBadges } from "./components/CrmStatusBadges";
 import { TalkToCrmCard } from "./components/TalkToCrmCard";
 import { PaywallView } from "./components/PaywallView";
 import { LinkAccountBanner } from "./components/LinkAccountBanner";
@@ -27,18 +30,37 @@ export default function App() {
   // so the option is hidden until there's a real account to sign back into.
   const canSignOut = !!session && !session.user.is_anonymous;
 
+  const [crmSettingsOpen, setCrmSettingsOpen] = useState(false);
+  const hasAnyConnection = Object.keys(connections).length > 0;
+  // The full connect card stays open until at least one CRM is hooked
+  // up (nothing to hide behind the cog yet) — after that, it's tucked away
+  // by default and only reappears when the cog is clicked.
+  const showConnectCard = crmSettingsOpen || (!connectionsLoading && !hasAnyConnection);
+
   return (
-    <div className="min-h-screen bg-background p-4 text-foreground">
+    <div className="min-h-screen overflow-x-hidden bg-background px-3 py-4 text-foreground">
       <header className="mb-4 flex items-start justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-semibold">Corner</h1>
-          <p className="text-sm text-muted-foreground">The private deal coach you talk to.</p>
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight">Corner</h1>
+          <p className="truncate text-xs text-muted-foreground">The private deal coach you talk to.</p>
         </div>
-        {canSignOut && (
-          <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
-            Sign out
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          <CrmStatusBadges connections={connections} loading={connectionsLoading} />
+          <button
+            type="button"
+            onClick={() => setCrmSettingsOpen((v) => !v)}
+            aria-label="Manage CRM connections"
+            aria-pressed={showConnectCard}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+          {canSignOut && (
+            <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
+              Sign out
+            </Button>
+          )}
+        </div>
       </header>
 
       {sessionLoading || subscriptionLoading ? (
@@ -48,7 +70,9 @@ export default function App() {
       ) : (
         <>
           {shouldNudge && <LinkAccountBanner />}
-          <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
+          {showConnectCard && (
+            <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
+          )}
           <DealStatusCard deal={deal} loading={dealLoading} />
           <TalkToCrmCard deal={deal} />
         </>

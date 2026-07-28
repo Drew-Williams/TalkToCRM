@@ -34,22 +34,22 @@ export function ConnectCrmCard({ connections, loading, onConnected }: ConnectCrm
   }
 
   return (
-    <Card className="mb-4">
-      <CardHeader>
-        <CardTitle>CRM connections</CardTitle>
-        <CardDescription>Connect the CRM you sell in so Corner can read your deals.</CardDescription>
+    <Card className="mb-3">
+      <CardHeader className="p-3 pb-1.5">
+        <CardTitle className="text-sm">CRM connections</CardTitle>
+        <CardDescription className="text-xs">Connect the CRM you sell in so Corner can read your deals.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 p-3 pt-1.5">
         {PROVIDERS.map(({ id, label }) => {
           const connection = connections[id];
           const isConnecting = connectingProvider === id;
           return (
-            <div key={id} className="flex items-center justify-between gap-2">
-              <span className="text-sm">{label}</span>
+            <div key={id} className="flex min-w-0 items-center justify-between gap-2">
+              <span className="shrink-0 text-sm">{label}</span>
               {loading ? (
                 <span className="text-xs text-muted-foreground">…</span>
               ) : connection ? (
-                <span className="text-xs text-muted-foreground">
+                <span className="truncate text-xs text-muted-foreground">
                   Connected{connection.accountRef ? ` as ${connection.accountRef}` : ""}
                 </span>
               ) : (

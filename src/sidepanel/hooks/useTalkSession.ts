@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Conversation, type Conversation as ConversationInstance } from "@elevenlabs/client";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
+import type { ExtensionMessage } from "@/lib/chrome/messaging";
 import { buildClientTools } from "@/lib/elevenlabs/client-tools";
 import { fetchConversationToken } from "@/lib/elevenlabs/conversation-token";
 import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
@@ -137,6 +138,24 @@ export function useTalkSession(deal: DetectedDeal | null) {
       conversationRef.current?.endSession();
     };
   }, []);
+
+  // "toggle-talk" keyboard shortcut (background broadcasts TOGGLE_TALK — see
+  // src/background/index.ts). Toggles based on current status: idle/ended
+  // starts a call (only if a deal is actually open — silently a no-op
+  // otherwise, matching the hero button's own disabled-when-no-deal state),
+  // connecting/connected ends it.
+  useEffect(() => {
+    function onMessage(message: ExtensionMessage) {
+      if (message.type !== "TOGGLE_TALK") return;
+      if (status === "connecting" || status === "connected") {
+        end();
+      } else if (dealRef.current) {
+        start();
+      }
+    }
+    chrome.runtime.onMessage.addListener(onMessage);
+    return () => chrome.runtime.onMessage.removeListener(onMessage);
+  }, [status, start, end]);
 
   return { status, mode, transcript, error, micBlocked, start, end };
 }

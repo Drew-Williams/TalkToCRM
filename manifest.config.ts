@@ -90,6 +90,20 @@ export default defineManifest({
 
   host_permissions: ["https://app.hubspot.com/*", "https://*.pipedrive.com/*"],
 
+  // Hands-free start/stop for the voice coach — chrome.commands.onCommand
+  // in src/background/index.ts opens the side panel (if needed) and
+  // broadcasts TOGGLE_TALK, which useTalkSession picks up to start or end
+  // the call depending on its current status. The rep can remap this
+  // anytime from chrome://extensions/shortcuts; the side panel's own
+  // shortcut badge (useKeyboardShortcutLabel) always reflects whatever key
+  // is actually assigned, not just this suggestion.
+  commands: {
+    "toggle-talk": {
+      suggested_key: { default: "Ctrl+Shift+K", mac: "Command+Shift+K" },
+      description: "Start or stop talking to Corner about the open deal",
+    },
+  },
+
   // document_start (not document_idle): both CRMs are SPAs and we patch
   // history.pushState/replaceState to detect in-app deal navigation (see
   // src/lib/spa-url-watcher.ts). Patching before the host page's own bundle

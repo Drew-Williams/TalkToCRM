@@ -151,3 +151,39 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   dealsByTabId.delete(tabId);
   if (lastActiveTabId === tabId) lastActiveTabId = null;
 });
+
+// "toggle-talk" keyboard shortcut (see manifest.config.ts) — a command
+// firing is itself a user gesture, so chrome.sidePanel.open() is allowed to
+// run here even though the panel may not be open yet. If the side panel
+// wasn't already open, its React app needs a moment to mount and register
+// its TOGGLE_TALK listener (see useTalkSession) before it can receive the
+// broadcast below — one short retry covers that without adding a
+// noticeable delay when the panel was already open (the common case).
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "toggle-talk") return;
+
+  try {
+    const tabId = await resolveActiveTabId();
+    if (tabId !== null) {
+      const tab = await chrome.tabs.get(tabId);
+      if (tab.windowId !== undefined) {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+      }
+    }
+  } catch (err) {
+    console.warn("[background] failed to open side panel for toggle-talk shortcut", err);
+  }
+
+  const message: ExtensionMessage = { type: "TOGGLE_TALK" };
+  const sent = await chrome.runtime.sendMessage(message).then(
+    () => true,
+    () => false,
+  );
+  if (!sent) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    chrome.runtime.sendMessage(message).catch(() => {
+      // Still no listener — the side panel genuinely isn't open/mounted;
+      // nothing to toggle.
+    });
+  }
+});
