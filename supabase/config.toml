@@ -29,3 +29,8 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+# Same reasoning as stripe-webhook — ElevenLabs' own post-call webhook calls
+# authenticate via verifyElevenLabsSignature, not a Supabase bearer token.
+[functions.elevenlabs-post-call-webhook]
+verify_jwt = false
