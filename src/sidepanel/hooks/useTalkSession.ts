@@ -7,6 +7,8 @@ import { fetchConversationToken } from "@/lib/elevenlabs/conversation-token";
 import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
 import { buildFirstMessage } from "@/lib/elevenlabs/session-start-prompt";
 import { queryMicrophonePermission } from "@/lib/chrome/microphone";
+import { fetchLatestMemory } from "@/lib/coaching-memory/get-memory";
+import { supabase } from "@/lib/supabase/client";
 
 export interface TranscriptEntry {
   id: number;
@@ -32,6 +34,11 @@ export function useTalkSession(deal: DetectedDeal | null) {
   // guaranteed-correct fix (a specific settings page to visit), not just an
   // explanation. See openMicrophoneSettings() in TalkToCrmCard.tsx.
   const [micBlocked, setMicBlocked] = useState(false);
+  // ElevenLabs' own conversation id, captured right as the session opens —
+  // this is what the post-call summary UI (usePostCallSummary.ts) polls
+  // coaching_memory for once the call ends, since that table's rows are
+  // keyed by this same id (see the webhook that writes them).
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const dealRef = useRef(deal);
   dealRef.current = deal;
@@ -42,6 +49,7 @@ export function useTalkSession(deal: DetectedDeal | null) {
     setError(null);
     setMicBlocked(false);
     setTranscript([]);
+    setConversationId(null);
     setStatus("connecting");
     try {
       // Check the current permission state first, without prompting —
@@ -93,17 +101,35 @@ export function useTalkSession(deal: DetectedDeal | null) {
       // expired, deal deleted, etc.), firstMessage is simply omitted below
       // and the agent falls back to its own static default greeting —
       // this is a nice-to-have, not something worth blocking or erroring
-      // the whole call over.
-      const [conversationToken, snapshotResult] = await Promise.all([
+      // the whole call over. Same for coaching memory: a failed/empty
+      // lookup just means no "last time..." callback in the greeting.
+      const [conversationToken, snapshotResult, memory, sessionData] = await Promise.all([
         fetchConversationToken(),
         dealRef.current ? fetchDealSnapshot(dealRef.current) : Promise.resolve(null),
+        dealRef.current ? fetchLatestMemory(dealRef.current) : Promise.resolve(null),
+        supabase.auth.getSession(),
       ]);
-      const firstMessage = snapshotResult && "snapshot" in snapshotResult ? buildFirstMessage(snapshotResult.snapshot) : undefined;
+      const firstMessage =
+        snapshotResult && "snapshot" in snapshotResult ? buildFirstMessage(snapshotResult.snapshot, memory) : undefined;
+      const userId = sessionData.data.session?.user.id;
+      const deal = dealRef.current;
 
       const conversation = await Conversation.startSession({
         conversationToken,
         connectionType: "webrtc",
         ...(firstMessage ? { overrides: { agent: { firstMessage } } } : {}),
+        // userId + dynamicVariables round-trip through to the post-call
+        // webhook payload (as data.user_id and
+        // conversation_initiation_client_data.dynamic_variables
+        // respectively) — that's how elevenlabs-post-call-webhook knows
+        // which rep and deal a given conversation's summary belongs to,
+        // without this app needing to track its own call-to-deal mapping
+        // separately. Omitted entirely when there's no deal open (or no
+        // signed-in user, which shouldn't happen but is possible if the
+        // session expires mid-click) — a coaching memory row with no deal
+        // to attach to isn't useful, so the webhook just skips those.
+        ...(userId ? { userId } : {}),
+        ...(deal ? { dynamicVariables: { corner_provider: deal.provider, corner_deal_id: deal.dealId } } : {}),
         clientTools: buildClientTools(() => dealRef.current),
         onStatusChange: ({ status: nextStatus }) => {
           if (nextStatus === "connected") setStatus("connected");
@@ -119,6 +145,7 @@ export function useTalkSession(deal: DetectedDeal | null) {
         },
       });
       conversationRef.current = conversation;
+      setConversationId(conversation.getId());
     } catch (e) {
       setStatus("ended");
       setError(e instanceof Error ? e.message : "Failed to start the voice session.");
@@ -157,5 +184,5 @@ export function useTalkSession(deal: DetectedDeal | null) {
     return () => chrome.runtime.onMessage.removeListener(onMessage);
   }, [status, start, end]);
 
-  return { status, mode, transcript, error, micBlocked, start, end };
+  return { status, mode, transcript, error, micBlocked, conversationId, start, end };
 }

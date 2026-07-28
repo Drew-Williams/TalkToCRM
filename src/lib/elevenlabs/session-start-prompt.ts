@@ -1,4 +1,5 @@
 import type { DealSnapshot } from "@/lib/crm-proxy/types";
+import type { CoachingMemory } from "@/lib/coaching-memory/types";
 
 /**
  * Builds a deal-aware greeting from data the extension already fetched
@@ -16,7 +17,7 @@ import type { DealSnapshot } from "@/lib/crm-proxy/types";
  * voice, and per the "every AI claim must trace to CRM data" rule, nothing
  * here should say more than the snapshot actually contains.
  */
-export function buildFirstMessage(snapshot: DealSnapshot): string {
+export function buildFirstMessage(snapshot: DealSnapshot, memory?: CoachingMemory | null): string {
   const dealName = snapshot.name ?? "this deal";
   const details: string[] = [];
   if (snapshot.stage) details.push(`${snapshot.stage} stage`);
@@ -31,5 +32,18 @@ export function buildFirstMessage(snapshot: DealSnapshot): string {
   }
 
   const summary = details.length > 0 ? `open — ${details.join(", ")}` : "open";
-  return `You've got ${dealName} ${summary}. What do you want to work through — catch you up, pressure-test it, or figure out the next move?`;
+
+  // Coaching memory (the last conversation's auto-generated summary) folds
+  // in as a callback — this is the whole point of remembering conversations
+  // at all: picking up where the last one left off instead of starting
+  // cold every time. Prefer the open action item (the most actionable
+  // thing to check back on) over the general summary when both exist.
+  let recap = "";
+  if (memory?.nextAction) {
+    recap = ` Last time, the next step was ${memory.nextAction} — did that happen?`;
+  } else if (memory?.summary) {
+    recap = ` Last time we covered: ${memory.summary}`;
+  }
+
+  return `You've got ${dealName} ${summary}.${recap} What do you want to work through — catch you up, pressure-test it, or figure out the next move?`;
 }

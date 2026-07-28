@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
+import { fetchRecentMemories } from "@/lib/coaching-memory/get-memory";
 
 const NOT_IMPLEMENTED = "This capability isn't available yet in Corner.";
 
@@ -25,20 +26,24 @@ async function callCrmProxy(deal: DetectedDeal, action: "get_recent_activities",
 /**
  * Client tools registered with the ElevenLabs SDK. The agent already has six
  * client tools configured in the ElevenLabs dashboard (checked directly via
- * the Convai API): get_deal_snapshot and get_recent_activities now have real
- * backends (crm-proxy's get_deal / get_recent_activities actions). The other
- * three (recall_notebook, lookup_playbook, save_note, push_to_crm — that's
- * four, actually) mirror capabilities from later steps (coaching memory, the
- * playbook, and the two-step CRM write flow) that don't have storage/APIs
+ * the Convai API): get_deal_snapshot, get_recent_activities, and
+ * recall_notebook now have real backends (crm-proxy's get_deal /
+ * get_recent_activities actions, and coaching_memory respectively —
+ * recall_notebook's expects_response was flipped to true via the Convai
+ * Tools API when this was wired up, since it shipped defaulted to false
+ * (fire-and-forget) back when it was still a stub). The other two
+ * (lookup_playbook, save_note — push_to_crm has since moved to a fifth,
+ * still-unbuilt capability) mirror capabilities from later steps (the org
+ * playbook and the two-step CRM write flow) that don't have storage/APIs
  * built yet, so they're registered as stubs purely so a tool call doesn't
- * surface as an "unhandled client tool" — all of them are configured with
- * expects_response: false in the dashboard (fire-and-forget), so the string
- * returned here is never actually read by the agent regardless.
+ * surface as an "unhandled client tool" — those two are still configured
+ * with expects_response: false in the dashboard, so the string returned
+ * here is never actually read by the agent regardless.
  *
- * getCurrentDeal is a function, not a captured value, so both real tools
- * always read whichever deal is active *at call time* even if the rep
- * switches tabs mid-conversation. Neither takes parameters from the agent
- * (their ElevenLabs tool configs both have parameters: null) — they always
+ * getCurrentDeal is a function, not a captured value, so every real tool
+ * always reads whichever deal is active *at call time* even if the rep
+ * switches tabs mid-conversation. None take parameters from the agent
+ * (their ElevenLabs tool configs all have parameters: null) — they always
  * operate on "whatever deal is currently open."
  */
 export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
@@ -76,7 +81,25 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
     },
 
     async recall_notebook(): Promise<string> {
-      return NOT_IMPLEMENTED;
+      const deal = getCurrentDeal();
+      if (!deal) {
+        return "No deal is currently open in the browser. Ask the rep to open a HubSpot or Pipedrive deal first.";
+      }
+      const memories = await fetchRecentMemories(deal, 5);
+      if (memories.length === 0) {
+        return "No memory of previous coaching conversations about this deal — this is the first one, or none were saved.";
+      }
+      // Plain, dated entries rather than trying to force each one into the
+      // notebook's own fact/hypothesis/action taxonomy (see this tool's
+      // description in the ElevenLabs dashboard) — the agent's own
+      // reasoning is better placed than this client code to judge which of
+      // those categories a given past summary actually falls into.
+      const entries = memories.map((m) => {
+        const date = new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const parts = [m.summary, m.risk ? `Risk: ${m.risk}` : null, m.nextAction ? `Next step: ${m.nextAction}` : null].filter(Boolean);
+        return `${date} — ${parts.join(" ")}`;
+      });
+      return entries.join("\n");
     },
     async lookup_playbook(): Promise<string> {
       return NOT_IMPLEMENTED;
