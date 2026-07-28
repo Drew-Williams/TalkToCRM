@@ -15,6 +15,16 @@ const ADAPTERS: Record<"hubspot" | "pipedrive", CrmAdapter> = {
   pipedrive: pipedriveAdapter,
 };
 
+// How many activities (calls, meetings, notes, emails combined) the coach
+// can see for a deal. This used to be 5, which was fine for a brand-new
+// deal but silently dropped most of a deal's real history the moment it
+// had more than 5 touchpoints total — e.g. a deal with months of email
+// back-and-forth would only ever show its last handful of meetings, with
+// the agent unable to answer questions about anything older. 40 comfortably
+// covers deals with a long history while staying well under what a single
+// LLM tool-call response should carry.
+const RECENT_ACTIVITIES_LIMIT = 40;
+
 interface ConnectionRow {
   id: string;
   access_token: string;
@@ -101,7 +111,7 @@ Deno.serve(async (req) => {
     const { accessToken, apiBase } = await getFreshAccessToken(adapter, connection as ConnectionRow);
 
     if (action === "get_recent_activities") {
-      const activities = await adapter.getRecentActivities(accessToken, dealId, apiBase, 5);
+      const activities = await adapter.getRecentActivities(accessToken, dealId, apiBase, RECENT_ACTIVITIES_LIMIT);
       return jsonResponse({ activities });
     }
 

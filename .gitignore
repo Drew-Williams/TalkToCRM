@@ -11,3 +11,4 @@ dist-*
 .vite
 *.tsbuildinfo
 supabase/.temp
+deno.lock

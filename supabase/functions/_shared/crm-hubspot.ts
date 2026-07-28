@@ -118,12 +118,20 @@ async function fetchEngagements(
   engagement: (typeof ENGAGEMENT_TYPES)[number],
 ): Promise<DealActivity[]> {
   try {
-    const assocRes = await fetch(`${API_BASE}/crm/v4/objects/deals/${dealId}/associations/${engagement.objectType}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const assocRes = await fetch(
+      `${API_BASE}/crm/v4/objects/deals/${dealId}/associations/${engagement.objectType}?limit=100`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
     if (!assocRes.ok) return [];
     const assocData = await assocRes.json();
-    const ids: string[] = (assocData.results ?? []).map((r: { toObjectId: number | string }) => String(r.toObjectId)).slice(0, 10);
+    // Deliberately NOT sliced before the batch/read + sort below — the
+    // associations endpoint's order isn't guaranteed to be chronological
+    // (observed: it can return oldest-first), so truncating here risked
+    // silently dropping a deal's most recent emails/notes/etc. in favor of
+    // its oldest ones. 100 is HubSpot's per-request association cap; a
+    // single deal engaging more than that on one channel is not the
+    // common case this needs to optimize for.
+    const ids: string[] = (assocData.results ?? []).map((r: { toObjectId: number | string }) => String(r.toObjectId));
     if (ids.length === 0) return [];
 
     const properties = [engagement.timestampProp, engagement.bodyProp, ...(engagement.subjectProp ? [engagement.subjectProp] : [])];
