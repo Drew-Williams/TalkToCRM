@@ -50,6 +50,22 @@ export default defineManifest({
     default_path: "src/sidepanel/index.html",
   },
 
+  // A real full-tab options page — not "an options page" in the ordinary
+  // settings-tweaking sense, but a full-tab surface to request microphone
+  // access from. Chrome's getUserMedia permission prompt has a documented
+  // reliability issue specifically inside side panels (it can silently
+  // auto-deny without ever showing a dialog); requesting the same
+  // permission from a normal tab is more reliable, and since Chrome scopes
+  // media permissions per *origin*, not per-page, granting it here covers
+  // the side panel too. open_in_tab: true is required — the default
+  // (embedded inside chrome://extensions) can't call getUserMedia at all.
+  // Opened automatically right after install (see src/background/index.ts)
+  // and on demand from the side panel's mic-blocked alert.
+  options_ui: {
+    page: "src/onboarding/index.html",
+    open_in_tab: true,
+  },
+
   // "identity" is for chrome.identity.launchWebAuthFlow (HubSpot/Pipedrive
   // OAuth connect) — it does NOT grant access to Google account info the
   // way chrome.identity.getAuthToken would; we never call that API.

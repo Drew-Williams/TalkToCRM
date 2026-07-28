@@ -5,6 +5,7 @@ import { buildClientTools } from "@/lib/elevenlabs/client-tools";
 import { fetchConversationToken } from "@/lib/elevenlabs/conversation-token";
 import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
 import { buildFirstMessage } from "@/lib/elevenlabs/session-start-prompt";
+import { queryMicrophonePermission } from "@/lib/chrome/microphone";
 
 export interface TranscriptEntry {
   id: number;
@@ -42,31 +43,46 @@ export function useTalkSession(deal: DetectedDeal | null) {
     setTranscript([]);
     setStatus("connecting");
     try {
-      // Request (and immediately release) the mic *before* any network call.
-      // getUserMedia's permission prompt needs to fire right on the click's
-      // user-gesture, with no async gap first — otherwise Chrome can silently
-      // auto-dismiss it ("NotAllowedError: Permission dismissed") without the
-      // rep ever seeing a prompt to respond to. fetchConversationToken()
-      // below is itself an async network round-trip, so it must come after
-      // this, not before. Once granted, permission persists at the
-      // extension's origin, so @elevenlabs/client's own later getUserMedia
-      // call (inside startSession) resolves instantly with no second prompt.
-      //
-      // In practice this prompt sometimes never visibly appears at all —
-      // Chrome auto-denies without showing anything, leaving the origin
-      // permanently blocked until manually changed in chrome://settings.
-      // There's no code fix for that (it's a real, documented Chrome/
-      // extension-context quirk, not a bug in this app), so micBlocked
-      // drives a direct link to the exact fix rather than just an
-      // explanation the rep has to act on themselves.
-      try {
-        const warmupStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        warmupStream.getTracks().forEach((track) => track.stop());
-      } catch {
+      // Check the current permission state first, without prompting —
+      // "granted" (e.g. already fixed via the onboarding tab, or via
+      // chrome://settings) skips the warmup below entirely, and "denied"
+      // skips straight to the mic-blocked UI instead of wasting a doomed
+      // getUserMedia attempt first. Only "prompt" (or an unrecognized
+      // state — treat the same as "prompt") actually needs the warmup.
+      const permissionState = await queryMicrophonePermission();
+
+      if (permissionState === "denied") {
         setStatus("ended");
         setMicBlocked(true);
         setError("Microphone access is blocked for this extension.");
         return;
+      }
+
+      if (permissionState !== "granted") {
+        // Request (and immediately release) the mic *before* any network
+        // call. getUserMedia's permission prompt needs to fire right on
+        // the click's user-gesture, with no async gap first — otherwise
+        // Chrome can silently auto-dismiss it ("NotAllowedError:
+        // Permission dismissed") without the rep ever seeing a prompt to
+        // respond to. fetchConversationToken() below is itself an async
+        // network round-trip, so it must come after this, not before.
+        //
+        // In practice this prompt sometimes never visibly appears at all
+        // inside a side panel specifically (a documented Chrome
+        // reliability issue, not a bug in this app) — leaving the origin
+        // blocked with no dialog ever shown. There's no code fix for that
+        // particular quirk, so micBlocked drives the rep to a full-tab
+        // page (src/onboarding) where the same permission request is more
+        // reliable, rather than just an explanation to act on themselves.
+        try {
+          const warmupStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          warmupStream.getTracks().forEach((track) => track.stop());
+        } catch {
+          setStatus("ended");
+          setMicBlocked(true);
+          setError("Microphone access is blocked for this extension.");
+          return;
+        }
       }
 
       // Fetched in parallel, not sequence — independent network calls, and

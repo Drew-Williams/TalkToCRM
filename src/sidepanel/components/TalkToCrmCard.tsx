@@ -4,29 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTalkSession } from "../hooks/useTalkSession";
+import { openMicrophoneOnboarding, openMicrophoneSettings } from "@/lib/chrome/microphone";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 
 interface TalkToCrmCardProps {
   deal: DetectedDeal | null;
-}
-
-// Takes the rep straight to Chrome's permission toggle for this exact
-// extension, rather than a generic "check your settings" instruction —
-// chrome://settings/content/siteDetails?site=<origin> opens Chrome's
-// per-origin permission page pre-scoped to this extension's own
-// chrome-extension:// origin, where microphone access shows up as
-// "Blocked" with a one-click dropdown to change it to "Allow." This is the
-// same fix documented for this exact "permission silently denied, never
-// visibly prompted" failure mode in Chrome's own extension-samples issue
-// tracker — there's no way to make the prompt itself reliably appear, so
-// this is the fastest path to the guaranteed-correct manual fix.
-function openMicrophoneSettings() {
-  const origin = `chrome-extension://${chrome.runtime.id}/`;
-  chrome.tabs.create({ url: `chrome://settings/content/siteDetails?site=${encodeURIComponent(origin)}` }).catch(() => {
-    // Opening chrome://settings can fail if disallowed by an enterprise
-    // policy. The plain-text error alongside this button already tells the
-    // rep the general fix if this doesn't work.
-  });
 }
 
 /**
@@ -106,15 +88,22 @@ export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
           <div className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
             <p className="flex items-center gap-2 font-medium text-destructive">
               <TriangleAlert className="h-4 w-4 shrink-0" />
-              Microphone is blocked for this extension
+              Microphone access needed
             </p>
             <p className="text-muted-foreground">
-              Chrome didn't show a permission prompt, so it's likely already set to "Block." Click below to open the
-              exact setting, change Microphone to "Allow," then come back and click "Talk about this deal" again.
+              Chrome didn't show a permission prompt here. Try granting access from a full browser tab instead — it's
+              more reliable — then come back and click "Talk about this deal" again.
             </p>
-            <Button size="sm" variant="outline" className="w-full" onClick={openMicrophoneSettings}>
-              Open microphone settings
+            <Button size="sm" className="w-full" onClick={openMicrophoneOnboarding}>
+              Grant microphone access in a new tab
             </Button>
+            <button
+              type="button"
+              onClick={openMicrophoneSettings}
+              className="w-full text-center text-xs text-muted-foreground hover:underline"
+            >
+              Already tried that? Open Chrome's microphone setting directly
+            </button>
           </div>
         ) : (
           error && <p className="text-sm text-destructive">{error}</p>

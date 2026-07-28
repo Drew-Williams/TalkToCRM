@@ -8,6 +8,19 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Proactively ask for microphone access right at install, in a real tab
+// (src/onboarding — see manifest.config.ts and lib/chrome/microphone.ts for
+// why a tab, not the side panel) rather than waiting for the rep to
+// discover the mic is needed by clicking "Talk" and hitting a blocked
+// prompt mid-flow. Only on a genuine fresh install (reason === "install"),
+// not every "reload" during development/testing — existing users
+// reloading an update shouldn't get an extra tab thrown at them each time.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    chrome.runtime.openOptionsPage();
+  }
+});
+
 // Chrome only auto-injects content_scripts into tabs navigated to *after*
 // install/reload — a HubSpot/Pipedrive tab that was already open keeps
 // running no content script (fresh install) or the previous version's
