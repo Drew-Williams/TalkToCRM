@@ -1,9 +1,10 @@
 import { supabase } from "@/lib/supabase/client";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
+import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
 
 const NOT_IMPLEMENTED = "This capability isn't available yet in Corner.";
 
-/** Shared by both real tools below — resolves the session token or a clear reason there isn't one. */
+/** Shared by get_recent_activities below — resolves the session token or a clear reason there isn't one. get_deal_snapshot uses fetchDealSnapshot instead, which does this same check internally. */
 async function getAccessTokenOrReason(): Promise<{ accessToken: string } | { error: string }> {
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
@@ -13,7 +14,7 @@ async function getAccessTokenOrReason(): Promise<{ accessToken: string } | { err
   return { accessToken };
 }
 
-async function callCrmProxy(deal: DetectedDeal, action: "get_deal" | "get_recent_activities", accessToken: string) {
+async function callCrmProxy(deal: DetectedDeal, action: "get_recent_activities", accessToken: string) {
   return fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crm-proxy`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
@@ -47,19 +48,8 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
       if (!deal) {
         return "No deal is currently open in the browser. Ask the rep to open a HubSpot or Pipedrive deal first.";
       }
-      const tokenResult = await getAccessTokenOrReason();
-      if ("error" in tokenResult) return tokenResult.error;
-
-      try {
-        const res = await callCrmProxy(deal, "get_deal", tokenResult.accessToken);
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          return typeof body?.error === "string" ? body.error : `Failed to load the deal (status ${res.status}).`;
-        }
-        return JSON.stringify(body.deal);
-      } catch (e) {
-        return e instanceof Error ? `Failed to load the deal: ${e.message}` : "Failed to load the deal.";
-      }
+      const result = await fetchDealSnapshot(deal);
+      return "error" in result ? result.error : JSON.stringify(result.snapshot);
     },
 
     async get_recent_activities(): Promise<string> {

@@ -3,6 +3,8 @@ import { Conversation, type Conversation as ConversationInstance } from "@eleven
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 import { buildClientTools } from "@/lib/elevenlabs/client-tools";
 import { fetchConversationToken } from "@/lib/elevenlabs/conversation-token";
+import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
+import { buildFirstMessage } from "@/lib/elevenlabs/session-start-prompt";
 
 export interface TranscriptEntry {
   id: number;
@@ -67,10 +69,24 @@ export function useTalkSession(deal: DetectedDeal | null) {
         return;
       }
 
-      const conversationToken = await fetchConversationToken();
+      // Fetched in parallel, not sequence — independent network calls, and
+      // this is already the delay between clicking "Talk" and the call
+      // actually starting, so it's worth not stacking them. If there's no
+      // deal open, or crm-proxy fails for any reason (not connected, token
+      // expired, deal deleted, etc.), firstMessage is simply omitted below
+      // and the agent falls back to its own static default greeting —
+      // this is a nice-to-have, not something worth blocking or erroring
+      // the whole call over.
+      const [conversationToken, snapshotResult] = await Promise.all([
+        fetchConversationToken(),
+        dealRef.current ? fetchDealSnapshot(dealRef.current) : Promise.resolve(null),
+      ]);
+      const firstMessage = snapshotResult && "snapshot" in snapshotResult ? buildFirstMessage(snapshotResult.snapshot) : undefined;
+
       const conversation = await Conversation.startSession({
         conversationToken,
         connectionType: "webrtc",
+        ...(firstMessage ? { overrides: { agent: { firstMessage } } } : {}),
         clientTools: buildClientTools(() => dealRef.current),
         onStatusChange: ({ status: nextStatus }) => {
           if (nextStatus === "connected") setStatus("connected");
