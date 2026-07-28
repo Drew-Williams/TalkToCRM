@@ -4,9 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTalkSession } from "../hooks/useTalkSession";
 import { useKeyboardShortcutLabel } from "../hooks/useKeyboardShortcutLabel";
+import { usePostCallSummary } from "../hooks/usePostCallSummary";
 import { openMicrophoneOnboarding, openMicrophoneSettings } from "@/lib/chrome/microphone";
 import { VoiceIndicator, ShimmerBar } from "./VoiceIndicator";
 import { TranscriptCopyButton } from "./TranscriptCopyButton";
+import { PostCallSummary } from "./PostCallSummary";
 import { cn } from "@/lib/utils";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 
@@ -43,9 +45,19 @@ const PHASE_LABEL: Record<VoicePhase, string> = {
  * kill the call itself.
  */
 export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
-  const { status, mode, transcript, error, micBlocked, start, end } = useTalkSession(deal);
+  const { status, mode, transcript, error, micBlocked, conversationId, start, end } = useTalkSession(deal);
   const shortcutLabel = useKeyboardShortcutLabel("toggle-talk");
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+  // Ephemeral, one-time post-call block (not a persistent history — see
+  // mem/design/coaching-memory-v1.md) offering a clean, copy-pasteable
+  // summary of the call that just ended for the rep's own CRM notes.
+  const { memory: postCallMemory, pending: postCallPending } = usePostCallSummary(conversationId, status === "ended");
+  const [postCallDismissed, setPostCallDismissed] = useState(false);
+  useEffect(() => {
+    setPostCallDismissed(false);
+  }, [conversationId]);
+  const showPostCall = status === "ended" && !postCallDismissed && (postCallPending || !!postCallMemory);
 
   // The ElevenLabs SDK only reports "speaking"/"listening" — there's no
   // distinct "thinking" signal. Approximated here as a brief transitional
@@ -78,7 +90,7 @@ export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
           ? "speaking"
           : "listening";
 
-  if (!deal && !isActive) return null;
+  if (!deal && !isActive && !showPostCall) return null;
 
   return (
     <Card className="mb-3">
@@ -134,6 +146,13 @@ export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
             </Button>
           </>
         )}
+
+        {showPostCall &&
+          (postCallMemory ? (
+            <PostCallSummary memory={postCallMemory} onDismiss={() => setPostCallDismissed(true)} />
+          ) : (
+            <p className="text-center text-xs text-muted-foreground">Wrapping up notes from that call…</p>
+          ))}
 
         {micBlocked ? (
           <div className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
