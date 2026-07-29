@@ -9,6 +9,14 @@ export interface DealContact {
   email: string | null;
 }
 
+export interface DealActivity {
+  type: string | null;
+  subject: string | null;
+  note: string | null;
+  occurredAt: string | null;
+  done: boolean | null;
+}
+
 export interface DealSnapshot {
   provider: "hubspot" | "pipedrive";
   dealId: string;

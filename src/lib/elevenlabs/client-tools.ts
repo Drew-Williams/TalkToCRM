@@ -1,28 +1,10 @@
-import { supabase } from "@/lib/supabase/client";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
+import { fetchRecentActivities } from "@/lib/crm-proxy/get-recent-activities";
 import { fetchRecentMemories } from "@/lib/coaching-memory/get-memory";
 import { fetchUserProfile } from "@/lib/user-profile/get-profile";
 
 const NOT_IMPLEMENTED = "This capability isn't available yet in Corner.";
-
-/** Shared by get_recent_activities below — resolves the session token or a clear reason there isn't one. get_deal_snapshot uses fetchDealSnapshot instead, which does this same check internally. */
-async function getAccessTokenOrReason(): Promise<{ accessToken: string } | { error: string }> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
-  if (!accessToken) {
-    return { error: "The rep is signed out of Corner. Ask them to sign in first." };
-  }
-  return { accessToken };
-}
-
-async function callCrmProxy(deal: DetectedDeal, action: "get_recent_activities", accessToken: string) {
-  return fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crm-proxy`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ provider: deal.provider, dealId: deal.dealId, action }),
-  });
-}
 
 /**
  * Client tools registered with the ElevenLabs SDK. get_deal_snapshot,
@@ -56,27 +38,24 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
       return "error" in result ? result.error : JSON.stringify(result.snapshot);
     },
 
+    // Session context (see session-start-prompt.ts's buildActivityDigest)
+    // already folds in a short digest of the deal's most recent activity
+    // before this tool is ever needed — this is the fallback for "more
+    // than the digest," a longer history, or a refresh after new
+    // information, not the primary way the agent learns about a deal's
+    // history on a first review (that was the actual bug reported: the
+    // agent would only call this reactively, after being pushed on it
+    // twice, instead of already knowing).
     async get_recent_activities(): Promise<string> {
       const deal = getCurrentDeal();
       if (!deal) {
         return "No deal is currently open in the browser. Ask the rep to open a Pipedrive deal first.";
       }
-      const tokenResult = await getAccessTokenOrReason();
-      if ("error" in tokenResult) return tokenResult.error;
-
-      try {
-        const res = await callCrmProxy(deal, "get_recent_activities", tokenResult.accessToken);
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          return typeof body?.error === "string" ? body.error : `Failed to load recent activity (status ${res.status}).`;
-        }
-        const activities = body.activities ?? [];
-        return activities.length === 0
-          ? "No recent activities (calls, meetings, emails, tasks) are logged against this deal."
-          : JSON.stringify(activities);
-      } catch (e) {
-        return e instanceof Error ? `Failed to load recent activity: ${e.message}` : "Failed to load recent activity.";
-      }
+      const result = await fetchRecentActivities(deal);
+      if ("error" in result) return result.error;
+      return result.activities.length === 0
+        ? "No recent activities (calls, meetings, emails, tasks) are logged against this deal."
+        : JSON.stringify(result.activities);
     },
 
     async recall_notebook(): Promise<string> {

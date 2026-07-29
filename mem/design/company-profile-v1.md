@@ -119,3 +119,28 @@ above: that override field isn't exposed by `@elevenlabs/client`'s browser
 session config (checked both the installed version and latest on npm),
 and even if it were, this agent's own security settings currently have
 `prompt.knowledge_base` disabled for client overrides entirely.
+
+## The same lesson, generalized: activity history had the identical bug
+
+Real usage surfaced the exact same failure mode a second time, for a
+different tool: `get_recent_activities` (calls/meetings/notes/emails) was
+also purely reactive, and `get_deal_snapshot` alone doesn't include
+activity — so on a *first* review, the agent would only discover a deal
+had call/note history after the seller had to point it out (twice, in the
+observed transcript), rather than already knowing.
+
+Fixed the same way: `useTalkSession.ts` now fetches recent activities in
+parallel with the deal snapshot, and `buildActivityDigest` (`session-
+start-prompt.ts`) turns the 5 most recent into a short, dated one-line-
+each digest passed as `corner_recent_activity` — referenced directly in
+SESSION BEHAVIOR, alongside the deal snapshot and coaching-memory recap.
+`get_recent_activities` stays wired as the fallback for a longer history
+than the digest covers.
+
+The pattern is now consistent across every piece of "the agent should
+already know this at the start of a call" context: name, role, company
+profile, and recent activity all ride along as prompt-injected session
+context, not something gated behind the agent choosing to call a tool
+first. Reserve actual tool calls for genuinely on-demand retrieval —
+something not already summarized, or a level of detail beyond what a
+short digest can reasonably carry.

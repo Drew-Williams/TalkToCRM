@@ -1,4 +1,4 @@
-import type { DealSnapshot } from "@/lib/crm-proxy/types";
+import type { DealActivity, DealSnapshot } from "@/lib/crm-proxy/types";
 import type { CoachingMemory } from "@/lib/coaching-memory/types";
 
 /**
@@ -58,4 +58,35 @@ export function buildFirstMessage(snapshot: DealSnapshot, memory?: CoachingMemor
   const recap = memory?.nextAction ? ` Last time, the next step was ${memory.nextAction} — did that happen?` : "";
 
   return `${greeting}You've got ${dealName} ${summary}.${recap} What do you want to work through — catch you up, pressure-test it, or figure out the next move?`;
+}
+
+/**
+ * A short, dated digest of a deal's most recent activity (calls, meetings,
+ * notes, emails) — passed as the corner_recent_activity dynamic variable
+ * and referenced in the base prompt's SESSION BEHAVIOR section, so the
+ * agent already has this on a *first* review instead of only calling
+ * get_recent_activities reactively after the seller has to point out that
+ * history exists (the exact gap real testing surfaced: get_deal_snapshot
+ * alone doesn't include activity, and the agent had no built-in reason to
+ * proactively fetch a separate tool for it).
+ *
+ * Deliberately short (5 items, each capped) — this rides along in the
+ * prompt for the whole conversation, unlike a one-off tool call, so it
+ * needs to stay cheap. get_recent_activities is still available for a
+ * longer history than this digest covers.
+ */
+export function buildActivityDigest(activities: DealActivity[], limit = 5): string {
+  if (activities.length === 0) return "";
+  return activities
+    .slice(0, limit)
+    .map((activity) => {
+      const date = activity.occurredAt
+        ? new Date(activity.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : "undated";
+      const label = activity.type ?? "activity";
+      const text = activity.subject || activity.note || "";
+      const truncated = text.length > 140 ? `${text.slice(0, 140)}…` : text;
+      return `${date} — ${label}: ${truncated}`;
+    })
+    .join("\n");
 }

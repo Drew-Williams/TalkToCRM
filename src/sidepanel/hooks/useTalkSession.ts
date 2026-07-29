@@ -5,7 +5,8 @@ import type { ExtensionMessage } from "@/lib/chrome/messaging";
 import { buildClientTools } from "@/lib/elevenlabs/client-tools";
 import { fetchConversationToken } from "@/lib/elevenlabs/conversation-token";
 import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
-import { buildFirstMessage } from "@/lib/elevenlabs/session-start-prompt";
+import { fetchRecentActivities } from "@/lib/crm-proxy/get-recent-activities";
+import { buildActivityDigest, buildFirstMessage } from "@/lib/elevenlabs/session-start-prompt";
 import { queryMicrophonePermission } from "@/lib/chrome/microphone";
 import { fetchLatestMemory } from "@/lib/coaching-memory/get-memory";
 import { fetchUserProfile } from "@/lib/user-profile/get-profile";
@@ -104,13 +105,16 @@ export function useTalkSession(deal: DetectedDeal | null) {
       // this is a nice-to-have, not something worth blocking or erroring
       // the whole call over. Same for coaching memory: a failed/empty
       // lookup just means no "last time..." callback in the greeting.
-      const [conversationToken, snapshotResult, memory, sessionData, profile] = await Promise.all([
+      const [conversationToken, snapshotResult, memory, sessionData, profile, activitiesResult] = await Promise.all([
         fetchConversationToken(),
         dealRef.current ? fetchDealSnapshot(dealRef.current) : Promise.resolve(null),
         dealRef.current ? fetchLatestMemory(dealRef.current) : Promise.resolve(null),
         supabase.auth.getSession(),
         fetchUserProfile(),
+        dealRef.current ? fetchRecentActivities(dealRef.current) : Promise.resolve(null),
       ]);
+      const activityDigest =
+        activitiesResult && "activities" in activitiesResult ? buildActivityDigest(activitiesResult.activities) : "";
       const firstMessage =
         snapshotResult && "snapshot" in snapshotResult
           ? buildFirstMessage(snapshotResult.snapshot, memory, profile?.displayName)
@@ -161,15 +165,18 @@ export function useTalkSession(deal: DetectedDeal | null) {
         // context for the *whole* conversation, not just the scripted
         // opening line.
         //
-        // Company profile fields were originally only wired through the
-        // lookup_playbook tool (called on-demand), but that turned out
-        // unreliable in practice — the agent has no built-in reason to
+        // Company profile fields, and now corner_recent_activity, were
+        // originally (or in the tool's original design) only reachable via
+        // an on-demand client tool — that turned out unreliable in
+        // practice for both: the agent has no built-in reason to
         // proactively call a tool just to "get oriented" at the start of a
-        // call, so it would openly say "I don't have your company
-        // context yet" instead of fetching it. Baking these into the
-        // prompt the same way name/role already work fixed that; the tool
-        // stays wired as a fallback the agent can still reach for
-        // explicitly if it wants more than this compact summary.
+        // call. Real testing caught this exactly for activity history —
+        // the agent only called get_recent_activities after the seller had
+        // to twice point out that call/note history existed, since
+        // get_deal_snapshot alone doesn't include it. Baking a short
+        // digest into the prompt the same way name/role/company profile
+        // already work fixes that; get_recent_activities stays wired as a
+        // fallback for a longer history than this digest covers.
         //
         // Always included (falling back to empty strings) since the
         // prompt's own placeholder defaults expect that, not an absent
@@ -184,6 +191,7 @@ export function useTalkSession(deal: DetectedDeal | null) {
           corner_icp: profile?.icp ?? "",
           corner_industry: profile?.industry ?? "",
           corner_competitors: profile?.competitors ?? "",
+          corner_recent_activity: activityDigest,
         },
         clientTools: buildClientTools(() => dealRef.current),
         onStatusChange: ({ status: nextStatus }) => {
