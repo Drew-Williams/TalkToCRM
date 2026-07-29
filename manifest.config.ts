@@ -91,7 +91,18 @@ export default defineManifest({
   // stuck on "No deal detected" until manually refreshed.
   permissions: ["sidePanel", "identity", "scripting"],
 
-  host_permissions: ["https://app.hubspot.com/*", "https://*.pipedrive.com/*"],
+  // Pipedrive-only for the MVP submission — the app.hubspot.com host
+  // permission is deliberately NOT requested here even though the
+  // adapter/OAuth/deal-detection code for it still fully exists (see
+  // ConnectCrmCard.tsx's hidden flag). Chrome's own review guidance is
+  // explicit that requesting a permission the extension doesn't actually
+  // use is grounds for rejection, not just extra scrutiny — and since
+  // HubSpot isn't offered as a connect option right now, that host
+  // permission would be exactly that: unused from a reviewer's point of
+  // view. Add "https://app.hubspot.com/*" back here (and the matching
+  // content_scripts entry below) in the same change that un-hides HubSpot
+  // in the UI, not before.
+  host_permissions: ["https://*.pipedrive.com/*"],
 
   // Hands-free start/stop for the voice coach — chrome.commands.onCommand
   // in src/background/index.ts opens the side panel (if needed) and
@@ -107,16 +118,14 @@ export default defineManifest({
     },
   },
 
-  // document_start (not document_idle): both CRMs are SPAs and we patch
+  // document_start (not document_idle): Pipedrive is an SPA and we patch
   // history.pushState/replaceState to detect in-app deal navigation (see
   // src/lib/spa-url-watcher.ts). Patching before the host page's own bundle
   // loads means it can't cache a reference to the un-patched original.
+  // The HubSpot content script (src/content/hubspot.content.ts) still
+  // exists and is untouched — just not registered here, matching
+  // host_permissions above being Pipedrive-only for this submission.
   content_scripts: [
-    {
-      matches: ["https://app.hubspot.com/*"],
-      js: ["src/content/hubspot.content.ts"],
-      run_at: "document_start",
-    },
     {
       matches: ["https://*.pipedrive.com/*"],
       js: ["src/content/pipedrive.content.ts"],

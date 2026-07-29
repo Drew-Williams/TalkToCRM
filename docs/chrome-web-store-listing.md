@@ -23,38 +23,46 @@ sub-category at submission time)
 > The private deal coach you talk to. Corner reads your CRM and coaches you out loud — no chat UI, no silent CRM writes.
 
 **Detailed description:**
-> Corner is a voice-first sales coach that lives in your browser's side panel. Open any HubSpot or Pipedrive deal, click "Talk about this deal," and talk it through out loud — Corner already knows the deal, its stage, its value, and its recent activity.
+> Corner is a voice-first sales coach that lives in your browser's side panel. Open any Pipedrive deal, click "Talk about this deal," and talk it through out loud — Corner already knows the deal, its stage, its value, and its recent activity.
 >
 > **What Corner does:**
-> - Reads deal data directly off the HubSpot/Pipedrive page you're viewing — no manual data entry, no separate dashboard to check.
+> - Reads deal data directly off the Pipedrive page you're viewing — no manual data entry, no separate dashboard to check.
 > - Answers questions about the deal's status, recent calls, notes, and emails by pulling live data from your connected CRM.
 > - Talks with you in a real voice conversation, not a chat window — ask a question out loud, get an answer out loud.
 > - Never changes anything in your CRM without your explicit, spoken confirmation. (CRM writes are a planned feature, not yet available.)
 >
 > **Your data:**
-> - Corner only reads the CRM(s) you explicitly connect via OAuth — nothing is read without your permission.
+> - Corner only reads the CRM you explicitly connect via OAuth — nothing is read without your permission.
 > - Deal data is fetched live for each conversation; Corner does not maintain its own copy of your CRM database.
 > - See our Privacy Policy for full details.
 >
-> Install and start talking immediately — no sign-up, no card. Your first 7 days of Corner Pro are free, starting the moment you open the side panel. Add your email anytime to keep your sessions if you switch computers, and connect HubSpot or Pipedrive whenever you're ready to talk through a real deal.
+> Install and start talking immediately — no sign-up, no card. Your first 7 days of Corner Pro are free, starting the moment you open the side panel. Add your email anytime to keep your sessions if you switch computers, and connect Pipedrive whenever you're ready to talk through a real deal.
 
 ## Permission justifications
 
 Chrome's review process requires a plain-language justification for each
 requested permission. Exact text to paste into the dashboard's
-"Permission justification" fields:
+"Permission justification" fields.
+
+Pipedrive-only for this submission (see `manifest.config.ts`) — HubSpot
+support still exists in code but isn't a requested permission or an
+offered connect option right now, so these justifications only mention
+what's actually requested. Update both the manifest and this doc together
+if/when HubSpot comes back into scope, not one without the other —
+Chrome's own review guidance treats a requested-but-unused permission as
+grounds for rejection, not just extra scrutiny.
 
 **`sidePanel`**
 > Corner's entire interface lives in Chrome's side panel rather than a popup, so the rep can keep it open alongside the CRM page they're viewing.
 
 **`identity`**
-> Used exclusively for `chrome.identity.launchWebAuthFlow`, so a user can connect their HubSpot or Pipedrive account via that CRM's own OAuth consent screen. This does not use `chrome.identity.getAuthToken` and never accesses the user's Google account information.
+> Used exclusively for `chrome.identity.launchWebAuthFlow`, so a user can connect their Pipedrive account via Pipedrive's own OAuth consent screen. This does not use `chrome.identity.getAuthToken` and never accesses the user's Google account information.
 
 **`scripting`**
-> Used to inject Corner's deal-detection script into HubSpot/Pipedrive tabs that were already open before the extension was installed or updated. Without this, a rep who already had a deal page open would need to manually refresh that tab before Corner could detect it.
+> Used to inject Corner's deal-detection script into Pipedrive tabs that were already open before the extension was installed or updated. Without this, a rep who already had a deal page open would need to manually refresh that tab before Corner could detect it.
 
-**Host permissions (`https://app.hubspot.com/*`, `https://*.pipedrive.com/*`)**
-> Corner reads deal information directly from the HubSpot/Pipedrive page the user is currently viewing. These are the only two sites Corner runs on or reads from — no other website's content is accessed.
+**Host permission (`https://*.pipedrive.com/*`)**
+> Corner reads deal information directly from the Pipedrive page the user is currently viewing. This is the only site Corner runs on or reads from — no other website's content is accessed.
 
 ## Data usage disclosure (Privacy practices tab)
 
@@ -65,12 +73,12 @@ collects/uses. Accurate answers for Corner:
 | --- | --- | --- |
 | Personally identifiable information | Yes | An anonymous account is created automatically on first use — no email required. An email address is only collected if the user chooses to link one (to keep their account recoverable) or when starting a paid plan. |
 | Authentication information | Yes | OAuth tokens for the connected CRM(s), stored server-side (Supabase), never in the extension itself. |
-| Website content | Yes | Deal data read from the HubSpot/Pipedrive page/API the user is viewing. |
+| Website content | Yes | Deal data read from the Pipedrive page/API the user is viewing. |
 | Location | No | |
 | Health info | No | |
 | Financial info | Yes | Only if/when the user starts a paid plan — payment is handled entirely by Stripe's own hosted checkout; Corner never receives or stores card details. |
 | Personal communications | Yes | Recent CRM activity the user asks about — calls, notes, emails logged in their own CRM (not the user's personal email/messages outside the CRM). |
-| Web browsing history | No | Corner only reads the current HubSpot/Pipedrive tab's content, not browsing history. |
+| Web browsing history | No | Corner only reads the current Pipedrive tab's content, not browsing history. |
 
 Also required: a checkbox confirming the extension does not sell user data
 to third parties, and does not use data for purposes unrelated to the
@@ -95,7 +103,7 @@ this to whoever's editing that project):
 > ### What we collect
 >
 > - **Account data.** When you install Corner, an anonymous account is created automatically — no email or personal information is required to start using it. If you choose to add an email (to keep your account if you switch computers or clear browser data), or when you start a paid plan, we store that email address.
-> - **CRM connection data.** If you connect a HubSpot or Pipedrive account, we store the OAuth access/refresh tokens for that connection on our servers (Supabase), encrypted at rest. These tokens are never sent to or stored in the extension itself, and never leave our servers except to call HubSpot's or Pipedrive's own API on your behalf.
+> - **CRM connection data.** If you connect a Pipedrive account, we store the OAuth access/refresh tokens for that connection on our servers (Supabase), encrypted at rest. These tokens are never sent to or stored in the extension itself, and never leave our servers except to call Pipedrive's own API on your behalf.
 > - **Deal data.** When you ask Corner about a deal, it fetches that deal's data (name, stage, value, contacts, recent calls/notes/emails) live from your connected CRM for that conversation. Corner does not maintain its own permanent copy of your CRM database.
 > - **Payment data.** If you upgrade to a paid plan, payment is processed entirely by Stripe. Corner never receives or stores your card details — only Stripe's confirmation that a subscription is active.
 > - **Voice data.** Conversations with Corner's voice agent are processed by ElevenLabs (our voice AI provider) to enable the real-time conversation. We do not separately record or store your voice audio.
@@ -104,7 +112,7 @@ this to whoever's editing that project):
 >
 > - We do not sell your data to any third party.
 > - We do not use your CRM data, deal information, or conversations for advertising.
-> - We do not read or access any website other than the HubSpot/Pipedrive page you're actively viewing.
+> - We do not read or access any website other than the Pipedrive page you're actively viewing.
 > - Corner does not write to, modify, or delete anything in your CRM without your explicit, spoken confirmation during a conversation.
 >
 > ### Data retention and deletion
