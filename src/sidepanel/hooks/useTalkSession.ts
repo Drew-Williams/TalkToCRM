@@ -121,6 +121,26 @@ export function useTalkSession(deal: DetectedDeal | null) {
       const conversation = await Conversation.startSession({
         conversationToken,
         connectionType: "webrtc",
+        // The SDK's default AudioWorklet loading strategy creates a blob:
+        // URL at runtime and addModule()s that — Chrome's default MV3
+        // extension_pages CSP (script-src 'self' 'wasm-unsafe-eval', no
+        // blob:) blocks that outright, which surfaced as "Failed to load
+        // the rawAudioProcessor worklet module" and no audio capture at
+        // all. Self-hosting the two worklet scripts (copied from
+        // @elevenlabs/client's own generated source into public/, so
+        // they're served from this extension's own origin, which *is*
+        // covered by 'self') avoids blob: entirely — see
+        // createWorkletModuleLoader in the SDK, which explicitly supports
+        // this as "the CSP-friendly approach" when a path is provided.
+        // Re-copy these two files (from
+        // node_modules/@elevenlabs/client/dist/platform/web/*.generated.js,
+        // stripping the wrapper import/createWorkletModuleLoader call
+        // around the template-literal source) if upgrading
+        // @elevenlabs/client ever changes them.
+        workletPaths: {
+          rawAudioProcessor: chrome.runtime.getURL("audio-worklets/rawAudioProcessor.generated.js"),
+          audioConcatProcessor: chrome.runtime.getURL("audio-worklets/audioConcatProcessor.generated.js"),
+        },
         ...(firstMessage ? { overrides: { agent: { firstMessage } } } : {}),
         // userId + dynamicVariables round-trip through to the post-call
         // webhook payload (as data.user_id and
