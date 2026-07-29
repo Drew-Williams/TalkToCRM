@@ -8,6 +8,7 @@ import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
 import { buildFirstMessage } from "@/lib/elevenlabs/session-start-prompt";
 import { queryMicrophonePermission } from "@/lib/chrome/microphone";
 import { fetchLatestMemory } from "@/lib/coaching-memory/get-memory";
+import { fetchUserProfile } from "@/lib/user-profile/get-profile";
 import { supabase } from "@/lib/supabase/client";
 
 export interface TranscriptEntry {
@@ -103,14 +104,17 @@ export function useTalkSession(deal: DetectedDeal | null) {
       // this is a nice-to-have, not something worth blocking or erroring
       // the whole call over. Same for coaching memory: a failed/empty
       // lookup just means no "last time..." callback in the greeting.
-      const [conversationToken, snapshotResult, memory, sessionData] = await Promise.all([
+      const [conversationToken, snapshotResult, memory, sessionData, profile] = await Promise.all([
         fetchConversationToken(),
         dealRef.current ? fetchDealSnapshot(dealRef.current) : Promise.resolve(null),
         dealRef.current ? fetchLatestMemory(dealRef.current) : Promise.resolve(null),
         supabase.auth.getSession(),
+        fetchUserProfile(),
       ]);
       const firstMessage =
-        snapshotResult && "snapshot" in snapshotResult ? buildFirstMessage(snapshotResult.snapshot, memory) : undefined;
+        snapshotResult && "snapshot" in snapshotResult
+          ? buildFirstMessage(snapshotResult.snapshot, memory, profile?.displayName)
+          : undefined;
       const userId = sessionData.data.session?.user.id;
       const deal = dealRef.current;
 
@@ -128,8 +132,21 @@ export function useTalkSession(deal: DetectedDeal | null) {
         // signed-in user, which shouldn't happen but is possible if the
         // session expires mid-click) — a coaching memory row with no deal
         // to attach to isn't useful, so the webhook just skips those.
+        //
+        // corner_rep_name/corner_rep_role are different — those aren't
+        // for the webhook at all, they're referenced directly in the
+        // agent's own base prompt (see the SELLER IDENTITY section added
+        // via the Convai API) via {{corner_rep_name}}/{{corner_rep_role}}
+        // template syntax, so the LLM has this context for the *whole*
+        // conversation, not just the scripted opening line. Always
+        // included (falling back to empty strings) since the prompt's own
+        // placeholder defaults expect that, not an absent variable.
         ...(userId ? { userId } : {}),
-        ...(deal ? { dynamicVariables: { corner_provider: deal.provider, corner_deal_id: deal.dealId } } : {}),
+        dynamicVariables: {
+          ...(deal ? { corner_provider: deal.provider, corner_deal_id: deal.dealId } : {}),
+          corner_rep_name: profile?.displayName ?? "",
+          corner_rep_role: profile?.role ?? "",
+        },
         clientTools: buildClientTools(() => dealRef.current),
         onStatusChange: ({ status: nextStatus }) => {
           if (nextStatus === "connected") setStatus("connected");

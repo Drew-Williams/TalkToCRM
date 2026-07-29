@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 import { fetchDealSnapshot } from "@/lib/crm-proxy/get-deal-snapshot";
 import { fetchRecentMemories } from "@/lib/coaching-memory/get-memory";
+import { fetchUserProfile } from "@/lib/user-profile/get-profile";
 
 const NOT_IMPLEMENTED = "This capability isn't available yet in Corner.";
 
@@ -24,27 +25,25 @@ async function callCrmProxy(deal: DetectedDeal, action: "get_recent_activities",
 }
 
 /**
- * Client tools registered with the ElevenLabs SDK. The agent already has six
- * client tools configured in the ElevenLabs dashboard (checked directly via
- * the Convai API): get_deal_snapshot, get_recent_activities, and
- * recall_notebook now have real backends (crm-proxy's get_deal /
- * get_recent_activities actions, and coaching_memory respectively —
- * recall_notebook's expects_response was flipped to true via the Convai
- * Tools API when this was wired up, since it shipped defaulted to false
- * (fire-and-forget) back when it was still a stub). The other two
- * (lookup_playbook, save_note — push_to_crm has since moved to a fifth,
- * still-unbuilt capability) mirror capabilities from later steps (the org
- * playbook and the two-step CRM write flow) that don't have storage/APIs
- * built yet, so they're registered as stubs purely so a tool call doesn't
- * surface as an "unhandled client tool" — those two are still configured
- * with expects_response: false in the dashboard, so the string returned
- * here is never actually read by the agent regardless.
+ * Client tools registered with the ElevenLabs SDK. get_deal_snapshot,
+ * get_recent_activities, recall_notebook, and lookup_playbook now have real
+ * backends (crm-proxy's get_deal / get_recent_activities actions,
+ * coaching_memory, and user_profile's "playbook light" company fields
+ * respectively — recall_notebook and lookup_playbook both shipped with
+ * expects_response: false back when they were stubs, so each got flipped
+ * to true via the Convai Tools API as it was wired up here). The remaining
+ * two (save_note, push_to_crm — the two-step CRM write flow) still have no
+ * storage/API built, so they're registered as stubs purely so a tool call
+ * doesn't surface as an "unhandled client tool" — those two are still
+ * configured with expects_response: false in the dashboard, so the string
+ * returned here is never actually read by the agent regardless.
  *
- * getCurrentDeal is a function, not a captured value, so every real tool
- * always reads whichever deal is active *at call time* even if the rep
- * switches tabs mid-conversation. None take parameters from the agent
+ * getCurrentDeal is a function, not a captured value, so every deal-scoped
+ * tool always reads whichever deal is active *at call time* even if the
+ * rep switches tabs mid-conversation. None take parameters from the agent
  * (their ElevenLabs tool configs all have parameters: null) — they always
- * operate on "whatever deal is currently open."
+ * operate on "whatever deal is currently open" (or, for lookup_playbook,
+ * the rep's own company profile, which isn't deal-scoped at all).
  */
 export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
   return {
@@ -102,7 +101,23 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
       return entries.join("\n");
     },
     async lookup_playbook(): Promise<string> {
-      return NOT_IMPLEMENTED;
+      const profile = await fetchUserProfile();
+      const hasAnyCompanyContext = !!(profile?.companyName || profile?.valueProp || profile?.icp || profile?.industry || profile?.competitors);
+      if (!hasAnyCompanyContext) {
+        return "No company playbook is set up yet — the rep hasn't added their company profile in Corner's settings.";
+      }
+      // The registered tool takes no parameters (topic-based retrieval
+      // isn't meaningful for a profile this small — see
+      // mem/design/company-profile-v1.md) — always return the whole
+      // compact profile and let the agent pull out what's relevant.
+      const parts = [
+        profile?.companyName ? `Company: ${profile.companyName}` : null,
+        profile?.industry ? `Industry: ${profile.industry}` : null,
+        profile?.valueProp ? `Value proposition: ${profile.valueProp}` : null,
+        profile?.icp ? `Ideal customer profile: ${profile.icp}` : null,
+        profile?.competitors ? `Known competitors: ${profile.competitors}` : null,
+      ].filter(Boolean);
+      return parts.join("\n");
     },
     async save_note(): Promise<string> {
       return NOT_IMPLEMENTED;
