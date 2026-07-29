@@ -117,7 +117,7 @@ this to whoever's editing that project):
 >
 > ### Data retention and deletion
 >
-> You can disconnect a CRM connection at any time from Corner's side panel, which deletes the stored OAuth tokens for that connection. To request full deletion of your account and all associated data, contact us at [fill in a real support/contact email].
+> You can disconnect a CRM connection at any time from Corner's side panel, which deletes the stored OAuth tokens for that connection. To request full deletion of your account and all associated data, contact us at success@salesplaybookbuilder.com.
 >
 > ### Changes to this policy
 >
@@ -125,7 +125,7 @@ this to whoever's editing that project):
 >
 > ### Contact
 >
-> Questions about this policy or your data: [fill in a real support/contact email].
+> Questions about this policy or your data: success@salesplaybookbuilder.com or 416-550-0497.
 
 ## Submitting (now that the developer account is registered)
 
