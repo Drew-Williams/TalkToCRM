@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProviderBadge } from "./ProviderBadge";
+import { ShimmerBar } from "./VoiceIndicator";
 import { useDealSnapshot } from "../hooks/useDealSnapshot";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 
@@ -24,7 +25,13 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
   if (loading) {
     return (
       <Card className="mb-3">
-        <CardContent className="p-3 text-sm text-muted-foreground">Looking for a deal on this tab…</CardContent>
+        <CardContent className="space-y-2 p-3">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
+            <p className="text-sm text-muted-foreground">Checking this tab for a deal…</p>
+          </div>
+          <ShimmerBar />
+        </CardContent>
       </Card>
     );
   }
