@@ -31,12 +31,36 @@ export function useSubscription(session: Session | null) {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.from("subscription_status").select("status, trial_end, current_period_end").maybeSingle();
-    if (!error && data) {
-      setSubscription({ status: data.status, trialEnd: data.trial_end, currentPeriodEnd: data.current_period_end });
-    } else {
-      setSubscription(null);
+
+    async function loadSubscription() {
+      return supabase.from("subscription_status").select("status, trial_end, current_period_end").maybeSingle();
     }
+
+    let { data, error } = await loadSubscription();
+
+    // A brand-new account should always get a subscriptions row the
+    // instant it's created (handle_new_user_trial, a DB trigger — see
+    // 20260727190000_reverse_trial.sql), but this is the one place that
+    // trigger not firing for whatever reason would actually surface: a rep
+    // hitting a hard "pay now" paywall despite never having gotten their 7
+    // free days. Rather than trust that never happens, self-heal it here —
+    // ensure_trial_started is a no-op for any account that already has a
+    // row (including a genuinely lapsed trial), so this can never grant a
+    // second trial, only recover a missing first one.
+    if (!error && !data) {
+      const { error: ensureError } = await supabase.rpc("ensure_trial_started");
+      if (ensureError) {
+        console.error("[useSubscription] ensure_trial_started failed", ensureError);
+      } else {
+        ({ data, error } = await loadSubscription());
+      }
+    }
+
+    if (error) {
+      console.error("[useSubscription] failed to load subscription_status", error);
+    }
+
+    setSubscription(!error && data ? { status: data.status, trialEnd: data.trial_end, currentPeriodEnd: data.current_period_end } : null);
     setLoading(false);
   }, [session]);
 
