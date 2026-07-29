@@ -32,8 +32,11 @@ export default defineManifest({
   // "detailed description" field, which has no such limit. Keep this one
   // terse; the fuller pitch lives in docs/chrome-web-store-listing.md for
   // the listing itself.
+  // Pipedrive-only for the MVP launch (HubSpot support still fully exists
+  // in code — adapter, OAuth, deal detection — just not advertised or
+  // offered as a connect option right now; see ConnectCrmCard.tsx).
   description:
-    "The private deal coach you talk to — reads live HubSpot/Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
+    "The private deal coach you talk to — reads live Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
   version: pkg.version,
 
   // Deliberately NOT under public/ — Vite auto-copies that dir's contents to

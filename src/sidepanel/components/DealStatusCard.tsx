@@ -35,7 +35,7 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
         <CardContent className="space-y-1 p-3">
           <p className="text-sm font-medium text-foreground">No deal detected</p>
           <p className="text-xs text-muted-foreground">
-            Open a HubSpot or Pipedrive deal in this window to get started — Corner reads it straight off the page.
+            Open a Pipedrive deal in this window to get started — Corner reads it straight off the page.
           </p>
         </CardContent>
       </Card>

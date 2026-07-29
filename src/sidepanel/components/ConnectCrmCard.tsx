@@ -11,8 +11,12 @@ interface ConnectCrmCardProps {
   onConnected: () => void;
 }
 
-const PROVIDERS: Array<{ id: CrmProvider; label: string }> = [
-  { id: "hubspot", label: "HubSpot" },
+// HubSpot is hidden (not removed — the adapter, OAuth flow, and deal
+// detection all still work fully) for the Pipedrive-only MVP launch. Flip
+// `hidden` off here (and in CrmStatusBadges.tsx) when HubSpot comes back
+// into scope — nothing else needs to change.
+const PROVIDERS: Array<{ id: CrmProvider; label: string; hidden?: boolean }> = [
+  { id: "hubspot", label: "HubSpot", hidden: true },
   { id: "pipedrive", label: "Pipedrive" },
 ];
 
@@ -40,7 +44,7 @@ export function ConnectCrmCard({ connections, loading, onConnected }: ConnectCrm
         <CardDescription className="text-xs">Connect the CRM you sell in so Corner can read your deals.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 p-3 pt-1.5">
-        {PROVIDERS.map(({ id, label }) => {
+        {PROVIDERS.filter((p) => !p.hidden).map(({ id, label }) => {
           const connection = connections[id];
           const isConnecting = connectingProvider === id;
           return (

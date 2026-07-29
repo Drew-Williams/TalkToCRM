@@ -50,7 +50,7 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
     async get_deal_snapshot(): Promise<string> {
       const deal = getCurrentDeal();
       if (!deal) {
-        return "No deal is currently open in the browser. Ask the rep to open a HubSpot or Pipedrive deal first.";
+        return "No deal is currently open in the browser. Ask the rep to open a Pipedrive deal first.";
       }
       const result = await fetchDealSnapshot(deal);
       return "error" in result ? result.error : JSON.stringify(result.snapshot);
@@ -59,7 +59,7 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
     async get_recent_activities(): Promise<string> {
       const deal = getCurrentDeal();
       if (!deal) {
-        return "No deal is currently open in the browser. Ask the rep to open a HubSpot or Pipedrive deal first.";
+        return "No deal is currently open in the browser. Ask the rep to open a Pipedrive deal first.";
       }
       const tokenResult = await getAccessTokenOrReason();
       if ("error" in tokenResult) return tokenResult.error;
@@ -82,7 +82,7 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
     async recall_notebook(): Promise<string> {
       const deal = getCurrentDeal();
       if (!deal) {
-        return "No deal is currently open in the browser. Ask the rep to open a HubSpot or Pipedrive deal first.";
+        return "No deal is currently open in the browser. Ask the rep to open a Pipedrive deal first.";
       }
       const memories = await fetchRecentMemories(deal, 5);
       if (memories.length === 0) {

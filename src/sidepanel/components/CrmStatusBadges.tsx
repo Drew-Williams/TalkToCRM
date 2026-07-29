@@ -6,6 +6,10 @@ const PROVIDER_LABELS: Record<CrmProvider, string> = {
   pipedrive: "Pipedrive",
 };
 
+// Matches ConnectCrmCard.tsx's PROVIDERS hidden flag — HubSpot is hidden,
+// not removed, for the Pipedrive-only MVP launch.
+const HIDDEN_PROVIDERS: CrmProvider[] = ["hubspot"];
+
 interface CrmStatusBadgesProps {
   connections: Partial<Record<CrmProvider, CrmConnectionInfo>>;
   loading: boolean;
@@ -20,7 +24,9 @@ interface CrmStatusBadgesProps {
  */
 export function CrmStatusBadges({ connections, loading }: CrmStatusBadgesProps) {
   if (loading) return null;
-  const connected = (Object.keys(connections) as CrmProvider[]).filter((provider) => connections[provider]);
+  const connected = (Object.keys(connections) as CrmProvider[]).filter(
+    (provider) => connections[provider] && !HIDDEN_PROVIDERS.includes(provider),
+  );
   if (connected.length === 0) return null;
 
   return (
