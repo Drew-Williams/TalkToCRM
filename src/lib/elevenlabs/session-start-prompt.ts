@@ -28,8 +28,16 @@ export function buildFirstMessage(snapshot: DealSnapshot, memory?: CoachingMemor
   const details: string[] = [];
   if (snapshot.stage) details.push(`${snapshot.stage} stage`);
   if (snapshot.amountCents != null) {
+    const dollars = snapshot.amountCents / 100;
+    // Rounded to the nearest thousand once it's big enough to matter for
+    // speech — a human coach says "about $29K," not "$29,012.47." Odd,
+    // precise figures also read as noticeably more awkward once spoken by
+    // TTS than a round number does; exact-to-the-cent is still available
+    // on request via get_deal_snapshot, just not in a fifteen-second
+    // greeting.
+    const roundedDollars = dollars >= 1000 ? Math.round(dollars / 1000) * 1000 : Math.round(dollars);
     details.push(
-      (snapshot.amountCents / 100).toLocaleString("en-US", {
+      roundedDollars.toLocaleString("en-US", {
         style: "currency",
         currency: snapshot.currency ?? "USD",
         maximumFractionDigits: 0,
@@ -39,17 +47,15 @@ export function buildFirstMessage(snapshot: DealSnapshot, memory?: CoachingMemor
 
   const summary = details.length > 0 ? `open — ${details.join(", ")}` : "open";
 
-  // Coaching memory (the last conversation's auto-generated summary) folds
-  // in as a callback — this is the whole point of remembering conversations
-  // at all: picking up where the last one left off instead of starting
-  // cold every time. Prefer the open action item (the most actionable
-  // thing to check back on) over the general summary when both exist.
-  let recap = "";
-  if (memory?.nextAction) {
-    recap = ` Last time, the next step was ${memory.nextAction} — did that happen?`;
-  } else if (memory?.summary) {
-    recap = ` Last time we covered: ${memory.summary}`;
-  }
+  // Coaching memory folds in as a short callback — but only the specific
+  // open action item, never the full stored summary verbatim. That
+  // summary is written like a report ("This coaching conversation
+  // reviewed...") because it's meant to be read on screen (the post-call
+  // copy-to-CRM block), not spoken — reciting it aloud is exactly what
+  // made early greetings sound robotic and repetitive. No fallback to
+  // memory.summary here on purpose: a plain, shorter greeting beats a
+  // stiff one every time.
+  const recap = memory?.nextAction ? ` Last time, the next step was ${memory.nextAction} — did that happen?` : "";
 
   return `${greeting}You've got ${dealName} ${summary}.${recap} What do you want to work through — catch you up, pressure-test it, or figure out the next move?`;
 }
