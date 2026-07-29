@@ -80,24 +80,42 @@ homepage alone won't always be right, and getting this wrong matters more
 for coaching quality than a one-off note would — worth the one extra
 click.
 
-**How it reaches the coach: the existing (previously-stubbed)
-`lookup_playbook` tool, not a new mechanism.** The agent's base prompt
-already had a fully-designed `lookup_playbook(topic)` tool contract
-("company-specific advice would be more useful than general advice") sitting
-unused (`expects_response: false`, so whatever it returned was silently
-ignored). Flipped to `true` and wired to return the profile's five fields
-as a compact block, regardless of `topic` — the registered tool takes no
-actual parameters (same as every other client tool here), and five short
-fields are small enough that there's no real benefit to topic-based
-filtering. The agent calls this on demand (an objection, "how do we
-usually position against X," etc.), not proactively on every turn — a
-better fit than dynamic-variable prompt injection, which would mean paying
-for the extra prompt tokens on every single turn regardless of relevance.
+**How it reaches the coach, take one: `lookup_playbook` — didn't work
+reliably in practice.** The agent's base prompt already had a fully-
+designed `lookup_playbook(topic)` tool contract ("company-specific advice
+would be more useful than general advice") sitting unused
+(`expects_response: false`, so whatever it returned was silently ignored).
+Flipped to `true` and wired to return the profile's five fields as a
+compact block, regardless of `topic` — the registered tool takes no actual
+parameters (same as every other client tool here), and five short fields
+are small enough that there's no real benefit to topic-based filtering.
+The theory was that the agent would call this on demand (an objection,
+"how do we usually position against X," etc.), avoiding the cost of extra
+prompt tokens on every turn the way dynamic-variable injection would.
+
+In real testing, this failed: the agent has no built-in reason to
+proactively call a tool just to "get oriented" at the start of a
+conversation, and with a saved profile sitting right there, it told the
+seller "I don't have the full picture of your company yet" instead of
+fetching it — name/role personalization (dynamic variables, prompt-
+injected) worked in the same session, confirming the gap was specifically
+the tool-call delivery path, not the underlying data.
+
+**Take two, and what actually shipped: prompt injection, same as name/
+role.** `corner_company_name`/`corner_value_prop`/`corner_icp`/
+`corner_industry`/`corner_competitors` are now passed as `dynamicVariables`
+at `Conversation.startSession()` and referenced directly in a new COMPANY
+CONTEXT section of the base prompt (patched in via the Convai API,
+alongside SELLER IDENTITY), with explicit instructions not to recite them
+as a list and to proceed normally when a field is empty. Five short fields
+is a small enough prompt-token cost that the "auto" tool-call theory's
+efficiency argument didn't hold up against just... reliably working.
+`lookup_playbook` stays wired as a fallback the agent can still reach for
+explicitly, but the prompt is now the primary, always-present path.
 
 An ElevenLabs-native Knowledge Base attachment (`overrides.agent.prompt.
-knowledgeBase`) was considered and ruled out: that override field isn't
-exposed by `@elevenlabs/client`'s browser session config (checked both the
-installed version and latest on npm), and even if it were, this agent's
-own security settings currently have `prompt.knowledge_base` disabled for
-client overrides entirely. The tool-call approach above works within both
-constraints without needing either changed.
+knowledgeBase`) was also considered and ruled out before either of the
+above: that override field isn't exposed by `@elevenlabs/client`'s browser
+session config (checked both the installed version and latest on npm),
+and even if it were, this agent's own security settings currently have
+`prompt.knowledge_base` disabled for client overrides entirely.

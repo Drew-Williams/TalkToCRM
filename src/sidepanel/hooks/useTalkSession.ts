@@ -133,19 +133,37 @@ export function useTalkSession(deal: DetectedDeal | null) {
         // session expires mid-click) — a coaching memory row with no deal
         // to attach to isn't useful, so the webhook just skips those.
         //
-        // corner_rep_name/corner_rep_role are different — those aren't
-        // for the webhook at all, they're referenced directly in the
-        // agent's own base prompt (see the SELLER IDENTITY section added
-        // via the Convai API) via {{corner_rep_name}}/{{corner_rep_role}}
-        // template syntax, so the LLM has this context for the *whole*
-        // conversation, not just the scripted opening line. Always
-        // included (falling back to empty strings) since the prompt's own
-        // placeholder defaults expect that, not an absent variable.
+        // corner_rep_name/corner_rep_role/corner_company_* are different —
+        // none of those are for the webhook at all, they're referenced
+        // directly in the agent's own base prompt (the SELLER IDENTITY and
+        // COMPANY CONTEXT sections added via the Convai API) via
+        // {{corner_rep_name}} etc. template syntax, so the LLM has this
+        // context for the *whole* conversation, not just the scripted
+        // opening line.
+        //
+        // Company profile fields were originally only wired through the
+        // lookup_playbook tool (called on-demand), but that turned out
+        // unreliable in practice — the agent has no built-in reason to
+        // proactively call a tool just to "get oriented" at the start of a
+        // call, so it would openly say "I don't have your company
+        // context yet" instead of fetching it. Baking these into the
+        // prompt the same way name/role already work fixed that; the tool
+        // stays wired as a fallback the agent can still reach for
+        // explicitly if it wants more than this compact summary.
+        //
+        // Always included (falling back to empty strings) since the
+        // prompt's own placeholder defaults expect that, not an absent
+        // variable.
         ...(userId ? { userId } : {}),
         dynamicVariables: {
           ...(deal ? { corner_provider: deal.provider, corner_deal_id: deal.dealId } : {}),
           corner_rep_name: profile?.displayName ?? "",
           corner_rep_role: profile?.role ?? "",
+          corner_company_name: profile?.companyName ?? "",
+          corner_value_prop: profile?.valueProp ?? "",
+          corner_icp: profile?.icp ?? "",
+          corner_industry: profile?.industry ?? "",
+          corner_competitors: profile?.competitors ?? "",
         },
         clientTools: buildClientTools(() => dealRef.current),
         onStatusChange: ({ status: nextStatus }) => {
