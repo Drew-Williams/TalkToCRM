@@ -6,6 +6,7 @@ import { useCrmConnections } from "./hooks/useCrmConnections";
 import { useSubscription } from "./hooks/useSubscription";
 import { DealStatusCard } from "./components/DealStatusCard";
 import { ConnectCrmCard } from "./components/ConnectCrmCard";
+import { ProfileCard } from "./components/ProfileCard";
 import { CrmStatusBadges } from "./components/CrmStatusBadges";
 import { TalkToCrmCard } from "./components/TalkToCrmCard";
 import { PaywallView } from "./components/PaywallView";
@@ -71,7 +72,10 @@ export default function App() {
         <>
           {shouldNudge && <LinkAccountBanner />}
           {showConnectCard && (
-            <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
+            <>
+              <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
+              <ProfileCard />
+            </>
           )}
           <DealStatusCard deal={deal} loading={dealLoading} />
           <TalkToCrmCard deal={deal} />

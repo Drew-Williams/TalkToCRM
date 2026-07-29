@@ -1,0 +1,103 @@
+# Personalization + company profile ("playbook light") v1
+
+## Why
+
+Follow-up to `mem/design/coaching-memory-v1.md`'s context-sources discussion.
+Two gaps called out from real usage: the coach only ever addresses the rep
+as "the rep"/"the seller" (impersonal for a voice-first product), and it
+knows nothing about the rep's own company — what they sell, to whom, in
+what industry — beyond whatever's implicitly buried in CRM deal data.
+
+Two things were explicitly *not* built here, by direct request:
+- **A named sales-methodology field** (MEDDIC/BANT/Sandler/etc.) — dropped
+  entirely. Claiming to coach in a licensed methodology without actually
+  licensing it is a real risk, not worth the personalization value. `role`
+  (see below) is the safer substitute signal.
+- **A staleness/"no activity in N days" flag** — dropped. The CRM already
+  surfaces this natively; a Corner-side duplicate would just be redundant,
+  not a new context source.
+
+## Personalization: name + role
+
+**Name capture, zero extra friction.** Pipedrive's OAuth connect already
+calls `/api/v2/users/me` (previously just for `company_domain`); it also
+returns the connecting user's own name for free. HubSpot's OAuth flow only
+gives an email from the access-token-info endpoint, so getting a name
+needs one extra lookup via the Owners API (`GET /crm/v3/owners?email=...`,
+covered by the `crm.objects.owners.read` scope already requested).
+`exchangeAndStoreConnection` (`_shared/store-connection.ts`) calls a new
+RPC, `ensure_profile_name`, after every successful connection — best-effort,
+and deliberately never overwrites a name the rep already set by hand
+(connecting a *second* CRM later shouldn't clobber it).
+
+`ensure_profile_name` takes an explicit `user_id` parameter rather than
+reading `auth.uid()` (contrast with `ensure_trial_started`, which is safe
+for direct client RPC precisely *because* it reads `auth.uid()`) — this one
+is never granted to `authenticated`, only ever called from the OAuth
+exchange edge functions via the service role.
+
+**Role** is a plain enum (`account_executive`, `sdr_bdr`, `founder`,
+`sales_manager`, `other`) the rep sets once in the new Profile card —
+there's no CRM signal for this, so it's just asked directly.
+
+**How the agent actually uses these.** Neither is folded into the
+scripted `firstMessage` override alone (well — the name is, for the very
+first line: "Hey Drew, you've got..."). Both are also passed as
+`dynamicVariables` (`corner_rep_name`, `corner_rep_role`) at
+`Conversation.startSession()`, and the agent's *base system prompt* now
+has a new "SELLER IDENTITY" section referencing `{{corner_rep_name}}` /
+`{{corner_rep_role}}` directly — patched in via the Convai API, with empty-
+string `dynamic_variable_placeholders` defaults so an unset profile
+degrades gracefully rather than leaking literal `{{...}}` syntax into
+speech. This is what makes the personalization last the *whole*
+conversation (the LLM has this context on every turn), not just the
+opening line.
+
+## Company profile ("playbook light")
+
+**What it isn't:** the bigger "org-wide, admin-authored, retrieval-indexed
+sales playbook" idea from `coaching-memory-v1.md` — that's still deferred,
+still needs an organizations/teams concept that doesn't exist. This is
+individual-scoped, tiny (five short fields), and explicitly *not* meant to
+absorb a real document corpus.
+
+**How it's generated.** The rep enters their company's URL once (Profile
+card, next to CRM connections). `company-profile`'s `analyze` action
+fetches that page, strips it to plain text (script/style stripped, capped
+at 6000 chars — plenty for a homepage, deliberately not a multi-page
+crawl), and asks an LLM (`gpt-4o-mini` — cheap, and this only runs once per
+rep or whenever they change their URL, so cost/latency barely matter
+either way) to infer: company name, one-line value proposition, ICP,
+industry, and likely competitors. Requires a new secret,
+`OPENAI_API_KEY` — unlike coaching memory, this genuinely doesn't fit
+anything ElevenLabs' own infrastructure already does for us.
+
+**The rep reviews before it's saved.** `analyze` never writes to the
+database — it just returns the inferred JSON for the Profile card to show
+in an editable form. Only `save` (a separate action, explicit rep click)
+persists the final fields, edited or not. First-pass AI inference from a
+homepage alone won't always be right, and getting this wrong matters more
+for coaching quality than a one-off note would — worth the one extra
+click.
+
+**How it reaches the coach: the existing (previously-stubbed)
+`lookup_playbook` tool, not a new mechanism.** The agent's base prompt
+already had a fully-designed `lookup_playbook(topic)` tool contract
+("company-specific advice would be more useful than general advice") sitting
+unused (`expects_response: false`, so whatever it returned was silently
+ignored). Flipped to `true` and wired to return the profile's five fields
+as a compact block, regardless of `topic` — the registered tool takes no
+actual parameters (same as every other client tool here), and five short
+fields are small enough that there's no real benefit to topic-based
+filtering. The agent calls this on demand (an objection, "how do we
+usually position against X," etc.), not proactively on every turn — a
+better fit than dynamic-variable prompt injection, which would mean paying
+for the extra prompt tokens on every single turn regardless of relevance.
+
+An ElevenLabs-native Knowledge Base attachment (`overrides.agent.prompt.
+knowledgeBase`) was considered and ruled out: that override field isn't
+exposed by `@elevenlabs/client`'s browser session config (checked both the
+installed version and latest on npm), and even if it were, this agent's
+own security settings currently have `prompt.knowledge_base` disabled for
+client overrides entirely. The tool-call approach above works within both
+constraints without needing either changed.

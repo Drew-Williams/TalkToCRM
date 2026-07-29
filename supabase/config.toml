@@ -34,3 +34,6 @@ verify_jwt = false
 # authenticate via verifyElevenLabsSignature, not a Supabase bearer token.
 [functions.elevenlabs-post-call-webhook]
 verify_jwt = false
+
+[functions.company-profile]
+verify_jwt = false
