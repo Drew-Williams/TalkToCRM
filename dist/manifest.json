@@ -29,7 +29,6 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://app.hubspot.com/*",
     "https://*.pipedrive.com/*"
   ],
   "commands": {
@@ -44,16 +43,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/hubspot.content.ts-loader-C_0-Sk23.js"
-      ],
-      "matches": [
-        "https://app.hubspot.com/*"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "js": [
-        "assets/pipedrive.content.ts-loader-DwcAWB9P.js"
+        "assets/pipedrive.content.ts-CVc1TcLD.js"
       ],
       "matches": [
         "https://*.pipedrive.com/*"
@@ -64,21 +54,10 @@
   "web_accessible_resources": [
     {
       "matches": [
-        "https://app.hubspot.com/*"
-      ],
-      "resources": [
-        "assets/watch-and-report-BiK8TIsj.js",
-        "assets/hubspot.content.ts-DrlzFiy6.js"
-      ],
-      "use_dynamic_url": false
-    },
-    {
-      "matches": [
         "https://*.pipedrive.com/*"
       ],
       "resources": [
-        "assets/watch-and-report-BiK8TIsj.js",
-        "assets/pipedrive.content.ts-CFi6h5hE.js"
+        "assets/pipedrive.content.ts-CVc1TcLD.js"
       ],
       "use_dynamic_url": false
     }
