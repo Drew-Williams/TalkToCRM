@@ -41,6 +41,28 @@ async function fetchStageLabel(accessToken: string, pipelineId: string | null, s
   return { stageLabel: stageId, pipelineLabel: pipelineId };
 }
 
+// HubSpot's access-token-info endpoint (used below in exchangeCode) only
+// gives an email for the connecting user, not their name — this looks it
+// up via the Owners API, which is keyed by email. Requires the
+// crm.objects.owners.read scope (already part of this app's requested
+// scopes). Best-effort: the connecting user isn't guaranteed to be a
+// HubSpot "owner" (a licensed seat) at all, in which case this just
+// returns null and the rep's name stays whatever they type in manually.
+async function fetchOwnerNameByEmail(accessToken: string, email: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/crm/v3/owners?email=${encodeURIComponent(email)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const owner = data.results?.[0];
+    if (!owner) return null;
+    return [owner.firstName, owner.lastName].filter(Boolean).join(" ") || null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchOwnerName(accessToken: string, ownerId: string | null): Promise<string | null> {
   if (!ownerId) return null;
   try {
@@ -173,14 +195,22 @@ export const hubspotAdapter: CrmAdapter = {
     const data = await res.json();
 
     let accountRef: string | null = null;
+    let ownerName: string | null = null;
     try {
       const infoRes = await fetch(`https://api.hubapi.com/oauth/v1/access-tokens/${data.access_token}`);
       if (infoRes.ok) {
         const info = await infoRes.json();
         accountRef = String(info.hub_id ?? info.portal_id ?? "") || null;
+        // access-tokens only gives an email (`user`) for the connecting
+        // user, never a name directly — one more lookup via Owners
+        // resolves it, same as fetchOwnerName above but keyed by email
+        // instead of an owner id.
+        if (typeof info.user === "string" && info.user) {
+          ownerName = await fetchOwnerNameByEmail(data.access_token, info.user);
+        }
       }
     } catch {
-      // Non-fatal — account_ref is informational (shown in the side panel), not required for the connection to work.
+      // Non-fatal — account_ref/ownerName are both best-effort informational signals, neither required for the connection to work.
     }
 
     return {
@@ -190,6 +220,7 @@ export const hubspotAdapter: CrmAdapter = {
       accountRef,
       apiBase: null, // HubSpot always uses api.hubapi.com regardless of portal
       scopes: typeof data.scope === "string" ? data.scope.split(" ") : [],
+      ownerName,
     };
   },
 

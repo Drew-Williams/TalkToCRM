@@ -37,5 +37,18 @@ export async function exchangeAndStoreConnection(
     throw new Error(`Failed to store ${provider} connection: ${error.message}`);
   }
 
+  // Best-effort personalization: fills in the rep's display name from
+  // whichever CRM they just connected, but only if their profile doesn't
+  // already have one (ensure_profile_name never overwrites an existing
+  // name) — connecting a *second* CRM later shouldn't clobber whatever
+  // name is already set. A failure here is never worth failing the
+  // connection itself over.
+  if (result.ownerName) {
+    const { error: nameError } = await admin.rpc("ensure_profile_name", { p_user_id: userId, p_display_name: result.ownerName });
+    if (nameError) {
+      console.error(`[store-connection] failed to backfill profile name from ${provider}:`, nameError.message);
+    }
+  }
+
   return { accountRef: result.accountRef };
 }

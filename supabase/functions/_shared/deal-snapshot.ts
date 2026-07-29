@@ -46,6 +46,8 @@ export interface CrmAdapter {
     /** Pipedrive returns a per-company API domain on token exchange; null for providers with a fixed API host (HubSpot). */
     apiBase: string | null;
     scopes: string[];
+    /** The connecting CRM user's own name, when available — best-effort personalization signal (see ensure_profile_name), never required. */
+    ownerName: string | null;
   }>;
   /** Refresh an access token. Returns null if the provider has no refresh flow (e.g. a non-expiring token). */
   refreshAccessToken(refreshToken: string): Promise<{

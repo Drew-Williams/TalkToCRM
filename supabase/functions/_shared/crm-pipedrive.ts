@@ -165,6 +165,7 @@ export const pipedriveAdapter: CrmAdapter = {
     const data = await res.json();
 
     let accountRef: string | null = null;
+    let ownerName: string | null = null;
     const apiBase: string | null = data.api_domain ?? null;
     try {
       const meRes = await fetch(`${apiBase ?? DEFAULT_API_BASE}/api/v2/users/me`, {
@@ -174,9 +175,13 @@ export const pipedriveAdapter: CrmAdapter = {
         const me = await meRes.json();
         const companyDomain = me.data?.company_domain as string | undefined;
         accountRef = companyDomain ?? null;
+        // The connecting user's own name — Pipedrive's /users/me already
+        // identifies exactly who authorized this connection, no extra
+        // lookup needed (unlike HubSpot, which only gives an email here).
+        ownerName = (me.data?.name as string | undefined) ?? null;
       }
     } catch {
-      // Non-fatal — account_ref is informational (shown in the side panel), not required for the connection to work.
+      // Non-fatal — account_ref/ownerName are both best-effort informational signals, neither required for the connection to work.
     }
 
     return {
@@ -186,6 +191,7 @@ export const pipedriveAdapter: CrmAdapter = {
       accountRef,
       apiBase,
       scopes: typeof data.scope === "string" ? data.scope.split(" ") : [],
+      ownerName,
     };
   },
 
