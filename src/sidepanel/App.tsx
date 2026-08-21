@@ -11,6 +11,7 @@ import { CrmStatusBadges } from "./components/CrmStatusBadges";
 import { TalkToCrmCard } from "./components/TalkToCrmCard";
 import { PaywallView } from "./components/PaywallView";
 import { LinkAccountBanner } from "./components/LinkAccountBanner";
+import { TrialStatusBar } from "./components/TrialStatusBar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase/client";
 
@@ -21,6 +22,7 @@ export default function App() {
   const {
     subscription,
     isActive: subscriptionActive,
+    daysRemaining,
     shouldNudge,
     loading: subscriptionLoading,
     refresh: refreshSubscription,
@@ -70,6 +72,7 @@ export default function App() {
         <PaywallView subscription={subscription} onRefresh={refreshSubscription} />
       ) : (
         <>
+          {subscription?.status === "trialing" && <TrialStatusBar daysRemaining={daysRemaining} onRefresh={refreshSubscription} />}
           {shouldNudge && <LinkAccountBanner />}
           {showConnectCard && (
             <>

@@ -68,15 +68,21 @@ export function useSubscription(session: Session | null) {
     refresh();
   }, [refresh]);
 
-  // Stripe's own status already reflects trial vs. paid vs. lapsed
-  // accurately (it auto-transitions trialing -> active/past_due/unpaid once
-  // the trial ends), so this is the full rule — no separate trial_end
-  // comparison needed for *this* check (trial_end is still used below, for
-  // the nudge timing and the "N days left" display).
-  const isActive = subscription?.status === "trialing" || subscription?.status === "active";
-
   const daysRemaining =
     subscription?.trialEnd != null ? Math.ceil((new Date(subscription.trialEnd).getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null;
+
+  // Stripe's own status auto-transitions trialing -> active/past_due/unpaid
+  // once a trial ends *for a real Stripe subscription* — but per the
+  // reverse-trial design, the 7 free days happen entirely before Stripe is
+  // ever involved (see mem/design/reverse-trial-v1.md): 'trialing' here is
+  // our own handle_new_user_trial trigger's status, and nothing
+  // automatically flips it once trial_end passes. Confirmed directly:
+  // this Stripe price has no trial period configured on Stripe's side
+  // either, so there is no Stripe-side signal to lean on at all — this
+  // check is the *only* thing that actually revokes access after 7 days.
+  const trialEndTime = subscription?.trialEnd ? new Date(subscription.trialEnd).getTime() : null;
+  const trialExpired = subscription?.status === "trialing" && trialEndTime !== null && trialEndTime <= Date.now();
+  const isActive = (subscription?.status === "trialing" && !trialExpired) || subscription?.status === "active";
 
   // Only worth nudging an anonymous rep who hasn't linked an email yet —
   // once they have, there's a real account to "save," so the banner would

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchCheckoutUrl } from "@/lib/billing/checkout";
+import { useUpgradeCheckout } from "../hooks/useUpgradeCheckout";
 import type { SubscriptionState } from "../hooks/useSubscription";
 
 interface PaywallViewProps {
@@ -20,9 +20,7 @@ const POLL_INTERVAL_MS = 5000;
 // ago it's not worth distinguishing in this copy. Either way, the fix is
 // the same button.
 export function PaywallView({ subscription, onRefresh }: PaywallViewProps) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [checkoutOpened, setCheckoutOpened] = useState(false);
+  const { startCheckout, pending, error, checkoutOpened } = useUpgradeCheckout();
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -35,23 +33,6 @@ export function PaywallView({ subscription, onRefresh }: PaywallViewProps) {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [checkoutOpened, onRefresh]);
-
-  async function handleUpgrade() {
-    setPending(true);
-    setError(null);
-    try {
-      const checkoutUrl = await fetchCheckoutUrl();
-      // Stripe Checkout is a full hosted page — it can't be embedded in the
-      // side panel (payment processors block iframing that for security),
-      // so it always opens in a real browser tab.
-      await chrome.tabs.create({ url: checkoutUrl });
-      setCheckoutOpened(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to start checkout.");
-    } finally {
-      setPending(false);
-    }
-  }
 
   const everSubscribed = subscription !== null;
 
@@ -66,7 +47,7 @@ export function PaywallView({ subscription, onRefresh }: PaywallViewProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Button className="w-full" onClick={handleUpgrade} disabled={pending}>
+        <Button className="w-full" onClick={startCheckout} disabled={pending}>
           {pending ? "Opening checkout…" : "Upgrade to Pro — $19/month"}
         </Button>
         {checkoutOpened && (
