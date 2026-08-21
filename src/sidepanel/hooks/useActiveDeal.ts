@@ -80,10 +80,31 @@ export function useActiveDeal(): ActiveDealState {
     }
     chrome.tabs.onActivated.addListener(onTabActivated);
 
+    // Connecting a CRM (chrome.identity.launchWebAuthFlow) opens the OAuth
+    // consent screen in a genuinely separate browser *window*, not a new
+    // tab — so when it closes and focus returns to the window with the
+    // deal tab and this side panel, that tab was never actually
+    // deactivated-then-reactivated (it was the active tab in its window
+    // throughout), meaning onTabActivated above never fires at all. That
+    // was reported as "no deal detected" that only cleared up once the
+    // rep manually navigated away and back — this is the actual missing
+    // trigger, not a timing race (the content script already reported the
+    // deal correctly ages before the OAuth flow even started; the panel
+    // just never asked again). windowId === WINDOW_ID_NONE fires when
+    // Chrome itself loses focus (e.g. switching to another application
+    // entirely) — nothing to resolve there, only worth reacting to focus
+    // actually landing back on a real window.
+    function onWindowFocusChanged(windowId: number) {
+      if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+      refresh(TAB_SWITCH_RETRY_DELAYS_MS);
+    }
+    chrome.windows.onFocusChanged.addListener(onWindowFocusChanged);
+
     return () => {
       cancelled = true;
       chrome.runtime.onMessage.removeListener(onMessage);
       chrome.tabs.onActivated.removeListener(onTabActivated);
+      chrome.windows.onFocusChanged.removeListener(onWindowFocusChanged);
     };
   }, []);
 
