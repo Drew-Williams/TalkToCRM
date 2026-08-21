@@ -116,9 +116,7 @@ export function useTalkSession(deal: DetectedDeal | null) {
       const activities = activitiesResult && "activities" in activitiesResult ? activitiesResult.activities : [];
       const activityDigest = buildActivityDigest(activities);
       const firstMessage =
-        snapshotResult && "snapshot" in snapshotResult
-          ? buildFirstMessage(snapshotResult.snapshot, memory, profile?.displayName, activities)
-          : undefined;
+        snapshotResult && "snapshot" in snapshotResult ? buildFirstMessage(snapshotResult.snapshot, memory, profile?.displayName) : undefined;
       const userId = sessionData.data.session?.user.id;
       const deal = dealRef.current;
 
