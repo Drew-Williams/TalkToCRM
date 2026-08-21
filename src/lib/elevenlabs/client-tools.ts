@@ -35,7 +35,17 @@ export function buildClientTools(getCurrentDeal: () => DetectedDeal | null) {
         return "No deal is currently open in the browser. Ask the rep to open a Pipedrive deal first.";
       }
       const result = await fetchDealSnapshot(deal);
-      return "error" in result ? result.error : JSON.stringify(result.snapshot);
+      if ("error" in result) return result.error;
+      // lastActivityAt deliberately omitted: it's Pipedrive's own summary
+      // field, tracked separately from (and frequently empty even on
+      // deals with real history compared to) the activity digest already
+      // supplied in session context — real testing showed the agent
+      // reading this field in isolation and flatly contradicting activity
+      // it had already correctly referenced moments earlier in the same
+      // conversation. Removing the temptation at the source is more
+      // reliable than only instructing the agent not to be misled by it.
+      const { lastActivityAt: _lastActivityAt, ...snapshotForAgent } = result.snapshot;
+      return JSON.stringify(snapshotForAgent);
     },
 
     // Session context (see session-start-prompt.ts's buildActivityDigest)

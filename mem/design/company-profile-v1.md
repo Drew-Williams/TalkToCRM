@@ -144,3 +144,33 @@ context, not something gated behind the agent choosing to call a tool
 first. Reserve actual tool calls for genuinely on-demand retrieval —
 something not already summarized, or a level of detail beyond what a
 short digest can reasonably carry.
+
+## A third instance: synthesis, not just delivery
+
+Even with the activity digest reliably present, real testing surfaced a
+related but distinct failure: the agent would correctly reference a note
+in its opening line, then two turns later flatly contradict itself —
+"the last activity timestamp is empty, which means there's been no
+logged customer contact" — because `get_deal_snapshot`'s own
+`lastActivityAt` field (Pipedrive's own summary field, tracked separately
+from real activity history and frequently empty even on deals with a lot
+of it) came back null, and the agent reported that field in isolation
+without reconciling it against the activity digest and its own prior
+statement.
+
+This isn't a data-delivery problem (the earlier fixes above solved that)
+— it's a synthesis problem: multiple context sources being treated as
+separate facts to report one at a time rather than one coherent picture.
+Fixed on two fronts:
+
+- **Removed the temptation at the source**: `get_deal_snapshot`'s
+  `lastActivityAt` field is now stripped out of what's actually returned
+  to the agent (`client-tools.ts`) — it isn't used anywhere in this
+  app's own UI either, so there was no reason to keep exposing a field
+  proven to actively mislead.
+- **Added an explicit synthesis instruction** ("ONE PICTURE, NOT
+  SEPARATE FACTS", patched into the base prompt after PRIMARY OBJECTIVE):
+  combine every context source into one understanding before responding,
+  treat an empty snapshot field as a data-entry gap rather than evidence
+  of no activity, and never contradict something already said earlier in
+  the same conversation.
