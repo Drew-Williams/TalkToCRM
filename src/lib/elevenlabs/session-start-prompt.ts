@@ -17,7 +17,38 @@ import type { CoachingMemory } from "@/lib/coaching-memory/types";
  * voice, and per the "every AI claim must trace to CRM data" rule, nothing
  * here should say more than the snapshot actually contains.
  */
-export function buildFirstMessage(snapshot: DealSnapshot, memory?: CoachingMemory | null, displayName?: string | null): string {
+/**
+ * A short, spoken-friendly reference to the single most recent CRM
+ * activity — used as the greeting's fallback recap when there's no
+ * coaching-memory next-action to callback to. Deliberately scripted
+ * (deterministic) rather than left to the LLM to decide whether to
+ * mention: real testing showed the agent would sometimes open cold by
+ * claiming "no recent activity" — reading only the deal snapshot's own
+ * (often-null) lastActivityAt field — even though a full activity digest
+ * was already sitting in its prompt context, only correcting itself once
+ * pushed on it. Proving activity awareness in the one line we fully
+ * control removes the chance of that ever happening again, regardless of
+ * how the LLM chooses to use the ambient digest on any given turn.
+ */
+function buildActivityRecap(activities: DealActivity[]): string {
+  if (activities.length === 0) return "";
+  const [latest] = activities;
+  const text = latest.subject || latest.note || "";
+  if (!text) return "";
+  const truncated = text.length > 100 ? `${text.slice(0, 100)}…` : text;
+  const label = latest.type || "note";
+  const date = latest.occurredAt
+    ? new Date(latest.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : null;
+  return date ? ` I see a ${label} from ${date}: ${truncated}` : ` I see a recent ${label}: ${truncated}`;
+}
+
+export function buildFirstMessage(
+  snapshot: DealSnapshot,
+  memory?: CoachingMemory | null,
+  displayName?: string | null,
+  activities: DealActivity[] = [],
+): string {
   const dealName = snapshot.name ?? "this deal";
   // First name only, spoken — "Hey Andrea Fields, you've got..." reads
   // fine on a screen but not out loud. A first-name-only greeting also
@@ -55,7 +86,14 @@ export function buildFirstMessage(snapshot: DealSnapshot, memory?: CoachingMemor
   // made early greetings sound robotic and repetitive. No fallback to
   // memory.summary here on purpose: a plain, shorter greeting beats a
   // stiff one every time.
-  const recap = memory?.nextAction ? ` Last time, the next step was ${memory.nextAction} — did that happen?` : "";
+  //
+  // When there's no coaching-memory next-action (most often: this is the
+  // first Corner conversation about this deal), fall back to referencing
+  // the most recent CRM activity instead — see buildActivityRecap's
+  // comment for why this needs to be scripted, not left to the LLM.
+  const recap = memory?.nextAction
+    ? ` Last time, the next step was ${memory.nextAction} — did that happen?`
+    : buildActivityRecap(activities);
 
   return `${greeting}You've got ${dealName} ${summary}.${recap} What do you want to work through — catch you up, pressure-test it, or figure out the next move?`;
 }

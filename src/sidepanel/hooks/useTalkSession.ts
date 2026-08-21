@@ -113,11 +113,11 @@ export function useTalkSession(deal: DetectedDeal | null) {
         fetchUserProfile(),
         dealRef.current ? fetchRecentActivities(dealRef.current) : Promise.resolve(null),
       ]);
-      const activityDigest =
-        activitiesResult && "activities" in activitiesResult ? buildActivityDigest(activitiesResult.activities) : "";
+      const activities = activitiesResult && "activities" in activitiesResult ? activitiesResult.activities : [];
+      const activityDigest = buildActivityDigest(activities);
       const firstMessage =
         snapshotResult && "snapshot" in snapshotResult
-          ? buildFirstMessage(snapshotResult.snapshot, memory, profile?.displayName)
+          ? buildFirstMessage(snapshotResult.snapshot, memory, profile?.displayName, activities)
           : undefined;
       const userId = sessionData.data.session?.user.id;
       const deal = dealRef.current;
