@@ -1,4 +1,4 @@
-import type { DealActivity, DealSnapshot } from "@/lib/crm-proxy/types";
+import type { DealActivity } from "@/lib/crm-proxy/types";
 import type { CoachingMemory } from "@/lib/coaching-memory/types";
 
 /**
@@ -12,35 +12,47 @@ import type { CoachingMemory } from "@/lib/coaching-memory/types";
  * even a well-written recap of CRM facts reads as stiff the moment it's
  * spoken verbatim rather than said.
  *
+ * Deliberately does not speak the CRM deal *name* either — real deal
+ * names are freeform text reps type into the CRM ("Q3 renewal - maybe",
+ * "ACME!!", a customer's misspelled company name) and reading one aloud
+ * verbatim is exactly as unnatural as reciting stage/amount was. Instead
+ * this only confirms, generically, that the coach is looking at the open
+ * deal — the acknowledgment a rep needs without a name that may read as
+ * odd out loud.
+ *
  * The coach still has everything (deal facts, activity history, company
  * context) the instant any of it is actually relevant — get_deal_snapshot
  * is already reliably called the moment the conversation needs deal
- * facts, and the activity digest/company context ride along as ambient
- * session context regardless of what this greeting says. This line's
- * only job is to open the conversation like a person would, not to prove
- * anything.
+ * facts (including the deal's actual name, when it's worth saying), and
+ * the activity digest/company context ride along as ambient session
+ * context regardless of what this greeting says. This line's only job is
+ * to open the conversation like a person would, not to prove anything.
+ *
+ * Only called when the extension has confirmed there's an active deal —
+ * see useTalkSession.ts's guard around this call — so "this deal" always
+ * refers to something real.
  *
  * Passed as overrides.agent.firstMessage, which only needed a one-line
  * enablement in the agent's Security settings — much lower-risk than
  * prompt.prompt's full base-prompt replacement.
  */
-export function buildFirstMessage(snapshot: DealSnapshot, memory?: CoachingMemory | null, displayName?: string | null): string {
-  const dealName = snapshot.name ?? "this deal";
+export function buildFirstMessage(memory?: CoachingMemory | null, displayName?: string | null): string {
   // First name only, spoken — "Hey Andrea Fields..." reads fine on a
   // screen but not out loud. Degrades gracefully to a plain "Hey" if
   // there's no name on file yet.
   const firstName = displayName?.trim().split(/\s+/)[0];
   const greeting = firstName ? `Hey ${firstName} — ` : "Hey — ";
+  const question = "Want a read on what's happening, or is there something specific you want to work through?";
 
   // Coaching memory is the one thing still worth calling back to directly
   // in the greeting — unlike CRM facts, it's a genuine "did you do the
   // thing we agreed on" continuity check, exactly how a real coach
   // follows up between sessions, not a recited data field.
   if (memory?.nextAction) {
-    return `${greeting}last time, the next step was ${memory.nextAction}. Did that happen? What do you want to work through today?`;
+    return `${greeting}I've got this deal pulled up. Last time, the next step was ${memory.nextAction} — did that happen? ${question}`;
   }
 
-  return `${greeting}what's going on with the ${dealName} deal, and what do you want to work through?`;
+  return `${greeting}I've got this deal pulled up. ${question}`;
 }
 
 /**
