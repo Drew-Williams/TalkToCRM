@@ -4,9 +4,11 @@ import { useActiveDeal } from "./hooks/useActiveDeal";
 import { useSupabaseSession } from "./hooks/useSupabaseSession";
 import { useCrmConnections } from "./hooks/useCrmConnections";
 import { useSubscription } from "./hooks/useSubscription";
+import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { DealStatusCard } from "./components/DealStatusCard";
 import { ConnectCrmCard } from "./components/ConnectCrmCard";
 import { ProfileCard } from "./components/ProfileCard";
+import { ProfileNudgeBanner } from "./components/ProfileNudgeBanner";
 import { CrmStatusBadges } from "./components/CrmStatusBadges";
 import { TalkToCrmCard } from "./components/TalkToCrmCard";
 import { PaywallView } from "./components/PaywallView";
@@ -14,6 +16,7 @@ import { LinkAccountBanner } from "./components/LinkAccountBanner";
 import { TrialStatusBar } from "./components/TrialStatusBar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase/client";
+import { dismissProfileNudge } from "@/lib/onboarding/state";
 
 export default function App() {
   const { deal, loading: dealLoading } = useActiveDeal();
@@ -40,6 +43,15 @@ export default function App() {
   // by default and only reappears when the cog is clicked.
   const showConnectCard = crmSettingsOpen || (!connectionsLoading && !hasAnyConnection);
 
+  // Connect → Talk → Customize (mem/design/onboarding-v1.md): before a CRM
+  // is connected, the panel below the header is ConnectCrmCard and nothing
+  // else — no ProfileCard, no cog — so the very first open asks for
+  // exactly one thing. Personalization only becomes reachable, and only
+  // gets actively surfaced, once the rep has already connected and (per
+  // the nudge below) had a first conversation.
+  const { hasCompletedFirstCall, profileNudgeDismissed } = useOnboardingFlags();
+  const showProfileNudge = hasAnyConnection && hasCompletedFirstCall && !profileNudgeDismissed && !showConnectCard;
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-background px-3 py-4 text-foreground">
       <header className="mb-4 flex items-start justify-between gap-2">
@@ -49,15 +61,17 @@ export default function App() {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <CrmStatusBadges connections={connections} loading={connectionsLoading} />
-          <button
-            type="button"
-            onClick={() => setCrmSettingsOpen((v) => !v)}
-            aria-label="Manage CRM connections"
-            aria-pressed={showConnectCard}
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
+          {hasAnyConnection && (
+            <button
+              type="button"
+              onClick={() => setCrmSettingsOpen((v) => !v)}
+              aria-label="Manage CRM connections"
+              aria-pressed={showConnectCard}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
           {canSignOut && (
             <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
               Sign out
@@ -77,11 +91,20 @@ export default function App() {
           {showConnectCard && (
             <>
               <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
-              <ProfileCard />
+              {hasAnyConnection && <ProfileCard />}
             </>
           )}
           <DealStatusCard deal={deal} loading={dealLoading} />
           <TalkToCrmCard deal={deal} />
+          {showProfileNudge && (
+            <ProfileNudgeBanner
+              onSetUpProfile={() => {
+                setCrmSettingsOpen(true);
+                dismissProfileNudge();
+              }}
+              onDismiss={dismissProfileNudge}
+            />
+          )}
         </>
       )}
     </div>

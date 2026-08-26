@@ -6,6 +6,7 @@ import { useTalkSession } from "../hooks/useTalkSession";
 import { useKeyboardShortcutLabel } from "../hooks/useKeyboardShortcutLabel";
 import { usePostCallSummary } from "../hooks/usePostCallSummary";
 import { openMicrophoneOnboarding, openMicrophoneSettings } from "@/lib/chrome/microphone";
+import { markFirstCallCompleted } from "@/lib/onboarding/state";
 import { VoiceIndicator, ShimmerBar } from "./VoiceIndicator";
 import { TranscriptCopyButton } from "./TranscriptCopyButton";
 import { PostCallSummary } from "./PostCallSummary";
@@ -58,6 +59,13 @@ export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
     setPostCallDismissed(false);
   }, [conversationId]);
   const showPostCall = status === "ended" && !postCallDismissed && (postCallPending || !!postCallMemory);
+
+  // Marks the Connect → Talk → Customize funnel's stage 2 as complete —
+  // see mem/design/onboarding-v1.md. Idempotent, so no guard needed
+  // against firing more than once per ended call.
+  useEffect(() => {
+    if (status === "ended") markFirstCallCompleted();
+  }, [status]);
 
   // The ElevenLabs SDK only reports "speaking"/"listening" — there's no
   // distinct "thinking" signal. Approximated here as a brief transitional
