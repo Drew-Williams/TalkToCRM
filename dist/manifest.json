@@ -26,7 +26,8 @@
   "permissions": [
     "sidePanel",
     "identity",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
     "https://*.pipedrive.com/*"

@@ -89,7 +89,19 @@ export default defineManifest({
   // injects content_scripts into tabs navigated to afterwards, so without
   // this, every reload during development leaves already-open deal tabs
   // stuck on "No deal detected" until manually refreshed.
-  permissions: ["sidePanel", "identity", "scripting"],
+  //
+  // "storage" is for chrome.storage.local — without this permission
+  // declared, `chrome.storage` is undefined entirely (not just its local/
+  // onChanged sub-APIs), not merely permission-denied at call time. That
+  // silently crashed the side panel to a completely blank screen the
+  // moment any code called it during mount (no error boundary — see
+  // src/lib/supabase/client.ts's comment on the same failure mode for a
+  // different cause): LinkAccountBanner's dismiss-snooze already used
+  // chrome.storage.local without this ever being declared, but only
+  // rendered rarely enough (gated on shouldNudge) that it went unnoticed;
+  // the onboarding-flags nudge (useOnboardingFlags.ts) reads it
+  // unconditionally on every mount, which is what surfaced this for real.
+  permissions: ["sidePanel", "identity", "scripting", "storage"],
 
   // Pipedrive-only for the MVP submission — the app.hubspot.com host
   // permission is deliberately NOT requested here even though the
