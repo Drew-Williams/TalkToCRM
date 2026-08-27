@@ -61,6 +61,9 @@ grounds for rejection, not just extra scrutiny.
 **`scripting`**
 > Used to inject Corner's deal-detection script into Pipedrive tabs that were already open before the extension was installed or updated. Without this, a rep who already had a deal page open would need to manually refresh that tab before Corner could detect it.
 
+**`storage`**
+> Used to remember small preferences locally on the user's device — for example, whether a one-time onboarding tip has already been shown, or a reminder banner already dismissed. This never stores CRM data, deal data, or personal information, and nothing here is synced or sent anywhere.
+
 **Host permission (`https://*.pipedrive.com/*`)**
 > Corner reads deal information directly from the Pipedrive page the user is currently viewing. This is the only site Corner runs on or reads from — no other website's content is accessed.
 
