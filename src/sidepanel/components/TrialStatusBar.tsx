@@ -34,13 +34,13 @@ export function TrialStatusBar({ daysRemaining, onRefresh }: TrialStatusBarProps
 
   return (
     <div className="mb-3 space-y-1.5">
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2">
-        <span className="text-xs font-medium text-slate-200">{label}</span>
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/[0.08] px-3 py-2">
+        <span className="text-xs font-medium text-foreground">{label}</span>
         <button
           type="button"
           onClick={startCheckout}
           disabled={pending}
-          className="shrink-0 text-xs font-semibold text-cyan-300 hover:text-cyan-200 hover:underline disabled:opacity-60"
+          className="shrink-0 text-xs font-semibold text-primary hover:text-primary/80 hover:underline disabled:opacity-60"
         >
           {pending ? "Opening…" : "Upgrade now"}
         </button>

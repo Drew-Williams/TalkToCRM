@@ -2,40 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Corner — side panel design tokens: a dark "HUD" aesthetic meant to sit
-   comfortably alongside CRM apps (HubSpot/Pipedrive) without competing with
-   their own light UI. There's no light-mode variant — this is the only
-   theme the side panel has, so these live directly on :root rather than
-   behind a `.dark` class. */
+/* Corner — side panel design tokens: a dark "HUD" aesthetic. These used to
+   be an independent cyan/electric-blue palette invented for the extension
+   alone, which drifted from mycornercoach.com's actual brand (navy + cream
+   + a brick-red accent — see its "on-dark" mode, the same dark-panel-with-
+   red-accent look shown in its own hero mockup of this very side panel).
+   Values below are converted 1:1 from that site's CSS (--navy, --cream,
+   --red, --red-deep, --corner-blue, and its .on-dark overrides) so the
+   extension and the marketing site read as the same product. There's no
+   light-mode variant — this is the only theme the side panel has, so these
+   live directly on :root rather than behind a `.dark` class. */
 @layer base {
   :root {
-    --background: 220 35% 6.7%; /* #0B0F17 — panel base */
-    --foreground: 210 40% 98%; /* #F8FAFC — primary headers/titles */
+    --background: 204 30% 16%; /* #1D2C36 — mycornercoach.com's --navy / .on-dark background */
+    --foreground: 39 58% 87%; /* #F1E4CB — mycornercoach.com's --cream */
 
-    --card: 222.2 47.4% 11.2%; /* #0F172A — opaque fallback; cards actually render as a translucent overlay, see ui/card.tsx */
-    --card-foreground: 210 40% 98%;
+    --card: 205 25% 20%; /* #263540 — mycornercoach.com's .on-dark --card; opaque fallback, cards actually render as a translucent overlay, see ui/card.tsx */
+    --card-foreground: 39 58% 87%;
 
-    --popover: 222.2 47.4% 11.2%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 205 25% 20%;
+    --popover-foreground: 39 58% 87%;
 
-    --primary: 187.9 85.7% 53.3%; /* #22D3EE — cyan/electric-blue accent */
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 4 54% 46%; /* #B43E36 — mycornercoach.com's --red, its one CTA/brand accent color */
+    --primary-foreground: 38 65% 97%; /* #FCF8F1 — mycornercoach.com's --primary-foreground */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 205 25% 20%;
+    --secondary-foreground: 39 58% 87%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215.4 16.3% 46.9%; /* #64748B — secondary copy/disclaimers */
+    --muted: 205 22% 18%;
+    --muted-foreground: 37 17% 75%; /* #CBC3B6 — mycornercoach.com's .on-dark --muted-foreground */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 200 26% 35%; /* #436272 — mycornercoach.com's --corner-blue, used there as a secondary/tertiary accent, never the primary CTA color */
+    --accent-foreground: 39 58% 87%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 2 65% 35%; /* #94221F — mycornercoach.com's --red-deep; a step darker than --primary so "End call" reads as distinct from the brand-red main CTA rather than identical to it */
+    --destructive-foreground: 38 65% 97%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 187.9 85.7% 53.3%;
+    --border: 0 0% 100%; /* white — matches mycornercoach.com's --border (white at 12% opacity); actual card borders use border-white/10 directly, see ui/card.tsx */
+    --input: 0 0% 100%;
+    --ring: 4 54% 46%;
 
     --radius: 0.75rem;
   }

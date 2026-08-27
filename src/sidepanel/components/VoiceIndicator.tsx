@@ -17,7 +17,7 @@ export function VoiceIndicator({ speaking }: { speaking: boolean }) {
         <span
           key={i}
           className={cn(
-            "w-1 origin-bottom rounded-full bg-cyan-400",
+            "w-1 origin-bottom rounded-full bg-primary",
             height,
             speaking ? "animate-wave-speaking" : "animate-wave-listening",
           )}
@@ -33,7 +33,7 @@ export function ShimmerBar() {
   return (
     <div className="h-2 w-2/3 overflow-hidden rounded-full bg-white/5">
       <div
-        className="h-full w-1/3 animate-shimmer rounded-full bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent"
+        className="h-full w-1/3 animate-shimmer rounded-full bg-gradient-to-r from-transparent via-primary/70 to-transparent"
         style={{ backgroundSize: "200% 100%" }}
       />
     </div>

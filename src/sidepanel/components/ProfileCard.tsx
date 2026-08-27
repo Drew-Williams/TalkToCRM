@@ -153,28 +153,62 @@ export function ProfileCard() {
         </div>
 
         {(profile.companyName || profile.valueProp || profile.icp || profile.industry || profile.competitors) && (
-          <div className="space-y-2">
-            <Input
-              placeholder="Company name"
-              value={profile.companyName ?? ""}
-              onChange={(e) => update("companyName", e.target.value || null)}
-            />
-            <Textarea
-              placeholder="What you sell and the outcome it delivers"
-              value={profile.valueProp ?? ""}
-              onChange={(e) => update("valueProp", e.target.value || null)}
-            />
-            <Textarea
-              placeholder="Your ideal customer (industry, size, role)"
-              value={profile.icp ?? ""}
-              onChange={(e) => update("icp", e.target.value || null)}
-            />
-            <Input placeholder="Industry" value={profile.industry ?? ""} onChange={(e) => update("industry", e.target.value || null)} />
-            <Input
-              placeholder="Known competitors (comma-separated)"
-              value={profile.competitors ?? ""}
-              onChange={(e) => update("competitors", e.target.value || null)}
-            />
+          <div className="space-y-3 border-t border-white/10 pt-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="profile-company-name">
+                Company name
+              </label>
+              <Input
+                id="profile-company-name"
+                placeholder="Company name"
+                value={profile.companyName ?? ""}
+                onChange={(e) => update("companyName", e.target.value || null)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="profile-value-prop">
+                Value prop
+              </label>
+              <Textarea
+                id="profile-value-prop"
+                placeholder="What you sell and the outcome it delivers"
+                value={profile.valueProp ?? ""}
+                onChange={(e) => update("valueProp", e.target.value || null)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="profile-icp">
+                Ideal customer
+              </label>
+              <Textarea
+                id="profile-icp"
+                placeholder="Your ideal customer (industry, size, role)"
+                value={profile.icp ?? ""}
+                onChange={(e) => update("icp", e.target.value || null)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="profile-industry">
+                Industry
+              </label>
+              <Input
+                id="profile-industry"
+                placeholder="Industry"
+                value={profile.industry ?? ""}
+                onChange={(e) => update("industry", e.target.value || null)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="profile-competitors">
+                Competitors
+              </label>
+              <Input
+                id="profile-competitors"
+                placeholder="Known competitors (comma-separated)"
+                value={profile.competitors ?? ""}
+                onChange={(e) => update("competitors", e.target.value || null)}
+              />
+            </div>
           </div>
         )}
 

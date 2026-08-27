@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProviderBadge } from "./ProviderBadge";
 import { ShimmerBar } from "./VoiceIndicator";
@@ -27,7 +26,7 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
       <Card className="mb-3">
         <CardContent className="space-y-2 p-3">
           <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
+            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary shadow-[0_0_6px_rgba(180,62,54,0.7)]" />
             <p className="text-sm text-muted-foreground">Checking this tab for a deal…</p>
           </div>
           <ShimmerBar />
@@ -49,7 +48,6 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
     );
   }
 
-  const crmName = deal.provider === "hubspot" ? "HubSpot" : "Pipedrive";
   const amount = formatAmount(snapshot?.amountCents, snapshot?.currency);
 
   return (
@@ -80,18 +78,7 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <a
-            href={deal.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-          >
-            Open in {crmName}
-            <ExternalLink className="h-3 w-3 shrink-0" />
-          </a>
-          <span className="shrink-0 text-muted-foreground">Read-only for now</span>
-        </div>
+        <p className="text-xs text-muted-foreground">Read-only for now</p>
       </CardContent>
     </Card>
   );

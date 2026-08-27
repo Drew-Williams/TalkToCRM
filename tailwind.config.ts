@@ -69,10 +69,12 @@ export default {
           to: { height: "0" },
         },
         // Idle "Talk about this deal" hero CTA — a soft glow ring expanding
-        // and fading, drawing the eye without being distracting.
+        // and fading, drawing the eye without being distracting. Color is
+        // mycornercoach.com's brand red (--red, see globals.css), not an
+        // independently-invented accent.
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0 rgba(34, 211, 238, 0.45)" },
-          "50%": { boxShadow: "0 0 0 10px rgba(34, 211, 238, 0)" },
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(180, 62, 54, 0.45)" },
+          "50%": { boxShadow: "0 0 0 10px rgba(180, 62, 54, 0)" },
         },
         // Connecting/"thinking" state — a light sweep across a skeleton bar.
         shimmer: {

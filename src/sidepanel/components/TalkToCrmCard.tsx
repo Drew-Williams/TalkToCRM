@@ -103,11 +103,13 @@ export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
   return (
     <Card className="mb-3">
       <CardContent className="space-y-3 p-3">
+        {/* to-[#94221F] is mycornercoach.com's --red-deep (see globals.css's --destructive comment) — used
+            here purely as the gradient's darker end, not as a semantic "destructive" color. */}
         {!isActive && deal && (
           <button
             type="button"
             onClick={start}
-            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-3 text-sm font-semibold text-slate-950 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-primary to-[#94221F] px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.01] active:scale-[0.99]"
           >
             <span className="pointer-events-none absolute inset-0 rounded-xl animate-pulse-glow" />
             <Mic className="relative h-4 w-4 shrink-0" />
