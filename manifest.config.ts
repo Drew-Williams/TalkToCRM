@@ -120,9 +120,11 @@ export default defineManifest({
   // in src/background/index.ts opens the side panel (if needed) and
   // broadcasts TOGGLE_TALK, which useTalkSession picks up to start or end
   // the call depending on its current status. The rep can remap this
-  // anytime from chrome://extensions/shortcuts; the side panel's own
-  // shortcut badge (useKeyboardShortcutLabel) always reflects whatever key
-  // is actually assigned, not just this suggestion.
+  // anytime from chrome://extensions/shortcuts. Still fully functional
+  // even though the "Talk about this deal" button no longer shows a
+  // shortcut badge for it (removed — an unlabeled key-combo chip on the
+  // button read as confusing clutter, not helpful, for a mouse-driven
+  // click target).
   commands: {
     "toggle-talk": {
       suggested_key: { default: "Ctrl+Shift+K", mac: "Command+Shift+K" },

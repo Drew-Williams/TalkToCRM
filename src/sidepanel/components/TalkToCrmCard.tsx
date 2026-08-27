@@ -3,7 +3,6 @@ import { Mic, PhoneOff, TriangleAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTalkSession } from "../hooks/useTalkSession";
-import { useKeyboardShortcutLabel } from "../hooks/useKeyboardShortcutLabel";
 import { usePostCallSummary } from "../hooks/usePostCallSummary";
 import { openMicrophoneOnboarding, openMicrophoneSettings } from "@/lib/chrome/microphone";
 import { markFirstCallCompleted } from "@/lib/onboarding/state";
@@ -47,7 +46,6 @@ const PHASE_LABEL: Record<VoicePhase, string> = {
  */
 export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
   const { status, mode, transcript, error, micBlocked, conversationId, start, end } = useTalkSession(deal);
-  const shortcutLabel = useKeyboardShortcutLabel("toggle-talk");
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   // Ephemeral, one-time post-call block (not a persistent history — see
@@ -114,11 +112,6 @@ export function TalkToCrmCard({ deal }: TalkToCrmCardProps) {
             <span className="pointer-events-none absolute inset-0 rounded-xl animate-pulse-glow" />
             <Mic className="relative h-4 w-4 shrink-0" />
             <span className="relative truncate">Talk about this deal</span>
-            {shortcutLabel && (
-              <span className="relative shrink-0 rounded border border-slate-950/25 bg-slate-950/10 px-1.5 py-0.5 font-mono text-[10px] tracking-tight">
-                {shortcutLabel}
-              </span>
-            )}
           </button>
         )}
 
