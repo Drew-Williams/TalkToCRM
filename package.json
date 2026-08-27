@@ -7,6 +7,7 @@
     "dev": "vite",
     "prebuild": "node scripts/check-client-env.mjs",
     "build": "vite build",
+    "build:store": "node scripts/check-client-env.mjs && BUILD_TARGET=store vite build --outDir store-build",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest"

@@ -13,6 +13,23 @@ import pkg from "./package.json";
 //   - "identity" and "scripting" were added in later steps — see their own
 //     comments below for why each is needed.
 //
+// Whether to include the pinned "key" field below — controlled by the
+// BUILD_TARGET env var (see package.json's "build:store" script), not a
+// permanent code branch. Chrome's local/unpacked loader has always
+// respected a manifest "key" field to pin a stable ID across reinstalls
+// (see the comment below), but the Chrome Web Store dashboard's "Add new
+// item" flow now flatly rejects any manifest containing one at all — not
+// just a mismatched one, a *new* item upload with "key" present errors
+// with "key field is not allowed in manifest." There is no known way
+// around this on Chrome's side as of testing this (Aug 2026): the store
+// now always assigns its own ID for a brand-new item, full stop, so the
+// "upload a zip with your own key as the very first upload to pin the
+// eventual published ID" trick that used to work no longer does. The zip
+// actually uploaded to the dashboard must therefore omit "key" entirely,
+// while the zip used for local/unpacked testing still needs it — hence
+// this toggle instead of just deleting the field outright.
+const isStoreBuild = process.env.BUILD_TARGET === "store";
+
 // Still no CRM-write permissions of any kind — push_to_crm isn't built yet.
 export default defineManifest({
   manifest_version: 3,
@@ -23,9 +40,18 @@ export default defineManifest({
   // registered with Pipedrive/HubSpot each time the extension is reloaded
   // from a fresh unzip. This is the PUBLIC half of a keypair generated
   // solely to compute that ID — it grants no other capability and is safe
-  // to commit (Chrome Web Store re-signs with its own key on publish; this
-  // "key" field only matters for local/unpacked installs).
-  key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoj7bR3NJtsnUOHP4wiAkjgNocxNxNChowoXnR0QorKyAF9skjkC7eLglzYyy4OgcEk1Rxb0Jq/6v6kW5tUvfEB+7obqh+lXkxlCWrCzFtfafg2EiVHZ8OlJmYeff6EsrIY3G5m6frg4k7XuAuyrHAS/YHAbuV0fopyK6dlRIWxwntYQbeWnJxD7Lc1T53GA9ImGN+YWT7djR/x33eWHTLfQ+AcSpzq/7ELKSbyEQUeZ6ckCX79zKvShZRL1VLK7OHvpkSajJYeSlBAGzCNbdjlDEBnAC1acTEhzCXPZMN+i/5xvXy1OaRBz33fxI3eLxAR1vdnG4YTS0mvldcZ1OQIDAQAB",
+  // to commit. Omitted entirely for a store build — see isStoreBuild above —
+  // meaning the published extension's real ID is now whatever the Chrome
+  // Web Store dashboard assigns on creation, found on the item's dashboard
+  // page once created; that ID needs to be added as a *second* registered
+  // OAuth redirect URI in the Pipedrive/HubSpot app settings (both accept
+  // multiple), alongside the one already registered for this pinned local-
+  // testing ID — they are now permanently different IDs, not the same one.
+  ...(isStoreBuild
+    ? {}
+    : {
+        key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoj7bR3NJtsnUOHP4wiAkjgNocxNxNChowoXnR0QorKyAF9skjkC7eLglzYyy4OgcEk1Rxb0Jq/6v6kW5tUvfEB+7obqh+lXkxlCWrCzFtfafg2EiVHZ8OlJmYeff6EsrIY3G5m6frg4k7XuAuyrHAS/YHAbuV0fopyK6dlRIWxwntYQbeWnJxD7Lc1T53GA9ImGN+YWT7djR/x33eWHTLfQ+AcSpzq/7ELKSbyEQUeZ6ckCX79zKvShZRL1VLK7OHvpkSajJYeSlBAGzCNbdjlDEBnAC1acTEhzCXPZMN+i/5xvXy1OaRBz33fxI3eLxAR1vdnG4YTS0mvldcZ1OQIDAQAB",
+      }),
   name: "Corner",
   // Chrome Web Store hard-caps manifest "description" at 132 characters —
   // separate from (and much shorter than) the store listing's own
