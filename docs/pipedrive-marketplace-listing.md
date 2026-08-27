@@ -40,6 +40,13 @@ real screenshots of the side panel in use against a real deal, or ask
 for a designed graphic (brand-aligned, not a literal screenshot) to be
 generated instead.
 
+## General info
+
+**Main contact email:** `drew@salesplaybookbuilder.com`
+
+**Use case** (350 char limit — reviewer-only, never shown publicly):
+> Sales reps usually get coaching in quarterly reviews, not right before the calls that matter. Corner is a voice-first coach in Pipedrive's side panel: a rep opens a deal, talks it through out loud, and Corner reads that deal's live stage, value, and recent activity to ask sharper questions and flag risk before the next call.
+
 ## Still to fill in (not yet drafted here)
 
 - **General info** tab
