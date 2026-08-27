@@ -44,7 +44,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/pipedrive.content.ts-CVc1TcLD.js"
+        "assets/pipedrive.content.ts-DYZICAK3.js"
       ],
       "matches": [
         "https://*.pipedrive.com/*"
@@ -58,7 +58,7 @@
         "https://*.pipedrive.com/*"
       ],
       "resources": [
-        "assets/pipedrive.content.ts-CVc1TcLD.js"
+        "assets/pipedrive.content.ts-DYZICAK3.js"
       ],
       "use_dynamic_url": false
     }

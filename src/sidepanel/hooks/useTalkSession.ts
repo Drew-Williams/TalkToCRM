@@ -143,6 +143,24 @@ export function useTalkSession(deal: DetectedDeal | null) {
           rawAudioProcessor: chrome.runtime.getURL("audio-worklets/rawAudioProcessor.generated.js"),
           audioConcatProcessor: chrome.runtime.getURL("audio-worklets/audioConcatProcessor.generated.js"),
         },
+        // Same CSP problem, a third time: when the audio context's actual
+        // sample rate doesn't match what the SDK asked for (device/OS
+        // mixing rate dependent — happens on some machines even though
+        // the constraint itself is supported) or the browser lacks the
+        // sampleRate MediaTrackConstraint outright, the SDK falls back to
+        // a resampler worklet it loads unconditionally from
+        // https://cdn.jsdelivr.net/... with no CSP-aware fallback chain at
+        // all (unlike the two above) — meaning it would always fail here:
+        // extension_pages CSP only allows 'self', so an external CDN
+        // script is blocked outright, no blob:/data: retry to even land
+        // on. Copied from that exact CDN URL into public/ (self-contained
+        // — its own embedded WebAssembly, verified to addModule()
+        // successfully from a plain http origin with no companion network
+        // fetch) the same way the other two worklets are. Re-copy if
+        // upgrading @elevenlabs/client changes addLibsamplerateModule's
+        // LIBSAMPLERATE_JS constant (currently
+        // @alexanderolsen/libsamplerate-js@2.1.2).
+        libsampleratePath: chrome.runtime.getURL("audio-worklets/libsamplerate.worklet.js"),
         ...(firstMessage ? { overrides: { agent: { firstMessage } } } : {}),
         // userId + dynamicVariables round-trip through to the post-call
         // webhook payload (as data.user_id and
