@@ -94,7 +94,7 @@ export default function App() {
               {hasAnyConnection && <ProfileCard />}
             </>
           )}
-          <DealStatusCard deal={deal} loading={dealLoading} />
+          <DealStatusCard deal={deal} loading={dealLoading} onReconnected={refreshConnections} />
           <TalkToCrmCard deal={deal} />
           {showProfileNudge && (
             <ProfileNudgeBanner

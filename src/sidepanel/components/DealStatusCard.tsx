@@ -1,12 +1,18 @@
+import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ProviderBadge } from "./ProviderBadge";
 import { ShimmerBar } from "./VoiceIndicator";
 import { useDealSnapshot } from "../hooks/useDealSnapshot";
+import { connectCrm } from "@/lib/crm-connect/connect";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 
 interface DealStatusCardProps {
   deal: DetectedDeal | null;
   loading: boolean;
+  /** Called after successfully reconnecting a revoked connection, so the header's CRM badge picks up "Connected" again too. */
+  onReconnected?: () => void;
 }
 
 function formatAmount(amountCents: number | null | undefined, currency: string | null | undefined): string | null {
@@ -18,8 +24,25 @@ function formatAmount(amountCents: number | null | undefined, currency: string |
   });
 }
 
-export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
-  const { snapshot, loading: snapshotLoading } = useDealSnapshot(deal);
+export function DealStatusCard({ deal, loading, onReconnected }: DealStatusCardProps) {
+  const { snapshot, loading: snapshotLoading, errorCode, refresh } = useDealSnapshot(deal);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [reconnectError, setReconnectError] = useState<string | null>(null);
+
+  async function handleReconnect() {
+    if (!deal) return;
+    setReconnecting(true);
+    setReconnectError(null);
+    try {
+      await connectCrm(deal.provider);
+      refresh();
+      onReconnected?.();
+    } catch (e) {
+      setReconnectError(e instanceof Error ? e.message : "Failed to reconnect.");
+    } finally {
+      setReconnecting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -43,6 +66,28 @@ export function DealStatusCard({ deal, loading }: DealStatusCardProps) {
           <p className="text-xs text-muted-foreground">
             Open a Pipedrive deal in this window to get started — Corner reads it straight off the page.
           </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (errorCode === "connection_revoked") {
+    const crmName = deal.provider === "hubspot" ? "HubSpot" : "Pipedrive";
+    return (
+      <Card className="mb-3 border-destructive/40">
+        <CardContent className="space-y-2 p-3">
+          <p className="flex items-center gap-2 text-sm font-medium text-destructive">
+            <TriangleAlert className="h-4 w-4 shrink-0" />
+            {crmName} connection needs reconnecting
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Corner's connection to {crmName} was disconnected or revoked on {crmName}'s side — this deal won't load until
+            it's reconnected.
+          </p>
+          <Button size="sm" className="w-full" onClick={handleReconnect} disabled={reconnecting}>
+            {reconnecting ? "Reconnecting…" : `Reconnect ${crmName}`}
+          </Button>
+          {reconnectError && <p className="text-xs text-destructive">{reconnectError}</p>}
         </CardContent>
       </Card>
     );

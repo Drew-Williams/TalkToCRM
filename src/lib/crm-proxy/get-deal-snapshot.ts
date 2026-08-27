@@ -11,7 +11,9 @@ import type { DealSnapshot } from "./types";
  * themselves how to degrade (a stubbed tool response string vs. silently
  * falling back to the agent's static greeting).
  */
-export async function fetchDealSnapshot(deal: DetectedDeal): Promise<{ snapshot: DealSnapshot } | { error: string }> {
+export async function fetchDealSnapshot(
+  deal: DetectedDeal,
+): Promise<{ snapshot: DealSnapshot } | { error: string; code?: string }> {
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (!accessToken) {
@@ -26,7 +28,13 @@ export async function fetchDealSnapshot(deal: DetectedDeal): Promise<{ snapshot:
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { error: typeof body?.error === "string" ? body.error : `Failed to load the deal (status ${res.status}).` };
+      return {
+        error: typeof body?.error === "string" ? body.error : `Failed to load the deal (status ${res.status}).`,
+        // "connection_revoked" — see crm-proxy/index.ts — lets DealStatusCard
+        // show a "reconnect" prompt instead of a generic error, since this
+        // is the one failure mode with an exact, guaranteed-correct fix.
+        code: typeof body?.code === "string" ? body.code : undefined,
+      };
     }
     return { snapshot: body.deal as DealSnapshot };
   } catch (e) {

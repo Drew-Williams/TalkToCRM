@@ -47,6 +47,67 @@ generated instead.
 **Use case** (350 char limit — reviewer-only, never shown publicly):
 > Sales reps usually get coaching in quarterly reviews, not right before the calls that matter. Corner is a voice-first coach in Pipedrive's side panel: a rep opens a deal, talks it through out loud, and Corner reads that deal's live stage, value, and recent activity to ask sharper questions and flag risk before the next call.
 
+## Demo video script (installation flow recording)
+
+Pipedrive requires one recording covering three docs at once:
+[scopes and permissions](https://pipedrive.readme.io/docs/marketplace-scopes-and-permissions-explanations),
+[installation flows](https://pipedrive.readme.io/docs/app-installation-flows),
+[uninstallation](https://pipedrive.readme.io/docs/app-uninstallation) — plus
+"demonstrate the key functionality." It's only ever seen internally by the
+review team, so it doesn't need production polish, just to clearly show
+each required moment in order. Roughly 3–4 minutes total.
+
+**1. Scopes and permissions (~30s)**
+- Show: Developer Hub → the app's "OAuth & access scopes" tab, with the
+  five requested scopes visible (`base`, `deals:read`, `contacts:read`,
+  `activities:read`, `mail:read`).
+- Say, pointing at each: "Corner only requests read scopes — it can't create,
+  edit, or delete anything in Pipedrive. `deals:read` lets it see a deal's
+  stage, value, and notes; `contacts:read` lets it see who's on the deal;
+  `activities:read` lets it see logged calls and meetings; `mail:read` lets
+  it see relevant email threads. `base` is the default scope every app gets,
+  for basic account info."
+
+**2. Installation flow (~60–90s)**
+- Show: the Pipedrive Marketplace listing page → click "Install now" (or
+  "Proceed to install") → the OAuth confirmation dialog opens in a new tab,
+  showing those same scopes → click "Allow and Install."
+- Show: back in Chrome, open the Corner side panel (click the toolbar icon)
+  → it shows "Connect Pipedrive" → click it → the same Pipedrive OAuth
+  screen opens (via `chrome.identity`, as a popup this time, not a new
+  tab) → Allow → side panel now shows "Pipedrive: Connected."
+- Say: "Installing from the Marketplace and connecting from inside the
+  extension both go through this same Pipedrive consent screen. Once
+  approved, Corner shows the connected state immediately — no extra setup
+  step."
+
+**3. Key functionality (~60–90s)**
+- Show: navigate to a real deal page in Pipedrive → the side panel
+  automatically detects it and shows the deal's name, stage, and amount →
+  click "Talk about this deal" → say something short out loud (e.g. "catch
+  me up on this deal") → Corner responds out loud, referencing the deal's
+  actual stage/value/recent activity.
+- Say: "Corner reads deal data straight off the page you're already
+  looking at — no separate dashboard, no manual entry. 'Talk about this
+  deal' starts a live voice conversation; Corner already knows this
+  deal's context and coaches the rep out loud."
+
+**4. Uninstallation (~30–45s)**
+- Show: in Pipedrive, go to Settings → Marketplace apps (or wherever
+  installed apps are managed for this account) → find Corner → Uninstall.
+- Show: back in the Corner side panel, either reopen it or try to open a
+  deal/click "Talk" again — it should now show a "Pipedrive connection
+  needs reconnecting" prompt instead of pretending the old connection
+  still works (see `mem/design/pipedrive-uninstall-v1.md` for why this is
+  reactive rather than an instant server-pushed notification — Pipedrive's
+  uninstall webhook reuses the same single Callback URL as OAuth, which
+  for this Chrome-extension app has to be the extension's own
+  `chromiumapp.org` address, not a server Corner controls).
+- Say: "When a user uninstalls Corner, Pipedrive revokes its access.
+  The next time Corner tries to use that connection, it detects the
+  revoked access, clears it, and asks the rep to reconnect — it never
+  keeps working with a broken connection silently."
+
 ## Still to fill in (not yet drafted here)
 
 - **General info** tab
