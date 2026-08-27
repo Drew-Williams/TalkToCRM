@@ -4,6 +4,7 @@
 // chrome.identity.launchWebAuthFlow, which requires the token exchange to
 // happen via a POST the extension itself calls, not a browser redirect).
 import type { CrmAdapter, DealActivity, DealContact, DealSnapshot } from "./deal-snapshot.ts";
+import { CrmAuthRevokedError } from "./crm-errors.ts";
 
 const HUBSPOT_CLIENT_ID = Deno.env.get("HUBSPOT_CLIENT_ID") ?? "";
 const HUBSPOT_CLIENT_SECRET = Deno.env.get("HUBSPOT_CLIENT_SECRET") ?? "";
@@ -249,6 +250,7 @@ export const hubspotAdapter: CrmAdapter = {
     const res = await fetch(`${API_BASE}/crm/v3/objects/deals/${dealId}?properties=${DEAL_PROPERTIES}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (res.status === 401) throw new CrmAuthRevokedError("hubspot");
     if (!res.ok) {
       throw new Error(`HubSpot get deal failed (${res.status}): ${await res.text()}`);
     }

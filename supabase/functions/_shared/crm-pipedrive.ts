@@ -2,6 +2,7 @@
 // token exchange happens via a POST the extension calls (chrome.identity)
 // rather than a GET redirect callback.
 import type { CrmAdapter, DealActivity, DealContact, DealSnapshot } from "./deal-snapshot.ts";
+import { CrmAuthRevokedError } from "./crm-errors.ts";
 
 const PIPEDRIVE_CLIENT_ID = Deno.env.get("PIPEDRIVE_CLIENT_ID") ?? "";
 const PIPEDRIVE_CLIENT_SECRET = Deno.env.get("PIPEDRIVE_CLIENT_SECRET") ?? "";
@@ -222,6 +223,7 @@ export const pipedriveAdapter: CrmAdapter = {
     const res = await fetch(`${base}/api/v2/deals/${dealId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (res.status === 401) throw new CrmAuthRevokedError("pipedrive");
     if (!res.ok) {
       throw new Error(`Pipedrive get deal failed (${res.status}): ${await res.text()}`);
     }
@@ -278,6 +280,7 @@ export const pipedriveAdapter: CrmAdapter = {
     const activitiesRes = await fetch(`${base}/api/v2/activities?deal_id=${dealId}&limit=${Math.max(1, limit)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (activitiesRes.status === 401) throw new CrmAuthRevokedError("pipedrive");
     if (!activitiesRes.ok) {
       throw new Error(`Pipedrive get activities failed (${activitiesRes.status}): ${await activitiesRes.text()}`);
     }

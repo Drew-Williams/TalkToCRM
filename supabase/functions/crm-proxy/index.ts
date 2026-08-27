@@ -9,6 +9,7 @@ import { handleCorsPreflight, jsonResponse } from "../_shared/cors.ts";
 import { hubspotAdapter } from "../_shared/crm-hubspot.ts";
 import { pipedriveAdapter } from "../_shared/crm-pipedrive.ts";
 import type { CrmAdapter } from "../_shared/deal-snapshot.ts";
+import { CrmAuthRevokedError } from "../_shared/crm-errors.ts";
 
 const ADAPTERS: Record<"hubspot" | "pipedrive", CrmAdapter> = {
   hubspot: hubspotAdapter,
@@ -108,15 +109,36 @@ Deno.serve(async (req) => {
     }
 
     const adapter = ADAPTERS[provider as "hubspot" | "pipedrive"];
-    const { accessToken, apiBase } = await getFreshAccessToken(adapter, connection as ConnectionRow);
 
-    if (action === "get_recent_activities") {
-      const activities = await adapter.getRecentActivities(accessToken, dealId, apiBase, RECENT_ACTIVITIES_LIMIT);
-      return jsonResponse({ activities });
+    try {
+      const { accessToken, apiBase } = await getFreshAccessToken(adapter, connection as ConnectionRow);
+
+      if (action === "get_recent_activities") {
+        const activities = await adapter.getRecentActivities(accessToken, dealId, apiBase, RECENT_ACTIVITIES_LIMIT);
+        return jsonResponse({ activities });
+      }
+
+      const snapshot = await adapter.getDeal(accessToken, dealId, apiBase);
+      return jsonResponse({ deal: snapshot });
+    } catch (e) {
+      // A 401 from the CRM almost always means this connection is dead —
+      // most commonly, the rep (or an admin) disconnected/uninstalled on
+      // the CRM's side, which Corner has no reliable way to be told about
+      // directly (see crm-errors.ts's comment on why a real uninstall
+      // webhook isn't reachable for this app). Clearing the stored row
+      // here, reactively, the next time it's actually used, is the
+      // fallback: the side panel already knows how to render "not
+      // connected" and route back through the Connect step, the same as
+      // if the rep had never connected at all.
+      if (e instanceof CrmAuthRevokedError) {
+        await admin.from("crm_connections").delete().eq("id", (connection as ConnectionRow).id);
+        return jsonResponse(
+          { error: `Your ${provider} connection was disconnected or revoked. Reconnect it in the side panel.`, code: "connection_revoked" },
+          { status: 409 },
+        );
+      }
+      throw e;
     }
-
-    const snapshot = await adapter.getDeal(accessToken, dealId, apiBase);
-    return jsonResponse({ deal: snapshot });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     console.error("[crm-proxy]", message);
