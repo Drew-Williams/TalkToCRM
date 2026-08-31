@@ -57,6 +57,20 @@ only fires the next time the connection is actually *used* (opening a
 deal, asking the coach about one), not the instant the uninstall happens
 — acceptable for now, not acceptable forever.
 
+**Addendum: this predicted conflict actually happened.** After the Chrome
+Web Store listing went live, testing the *published* copy (a different,
+Chrome-assigned ID — `dpadpffnlgkbpakbfnnjnegdolfgfeio`, since the store
+dashboard rejects the pinned manifest `key` on new items; see
+`npm run build:store`) hit exactly this: "Redirect URI match failed,"
+because Pipedrive's one Callback URL was still registered to the local
+pinned dev ID (`noljedpanlelibpakngfgmiopmcdhgdo`). Resolved by switching
+the registered Callback URL to the published ID, since that's what real
+users and Marketplace reviewers actually install — which means local
+unpacked testing against Pipedrive is broken until either the Callback
+URL is switched back temporarily or a second, dev-only Pipedrive app is
+registered. See README.md's "pinned extension ID" section for current
+status of which ID is registered.
+
 **What this means for the submission video.** The uninstallation segment
 can't show a server genuinely receiving Pipedrive's webhook (there isn't
 one reachable yet) — it should instead show the *user-visible* behavior:

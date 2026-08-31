@@ -84,10 +84,29 @@ page shouldn't require a manual tab refresh either.
 
 The extension's ID is pinned to `noljedpanlelibpakngfgmiopmcdhgdo` via the
 `key` field in `manifest.config.ts`, so it stays the same no matter how many
-times you remove/reload it or which machine/folder you unpack it in. This is
-what the Pipedrive and HubSpot OAuth apps' redirect URLs are registered
-against (`https://noljedpanlelibpakngfgmiopmcdhgdo.chromiumapp.org/`) — you
-should never need to re-register a redirect URL after a reinstall again.
+times you remove/reload it or which machine/folder you unpack it in — this
+is the ID for **local/unpacked installs only** (`npm run build`, `dist/`).
+
+**The published Chrome Web Store copy has a different, Chrome-assigned ID:
+`dpadpffnlgkbpakbfnnjnegdolfgfeio`** (listing:
+<https://chromewebstore.google.com/detail/corner/dpadpffnlgkbpakbfnnjnegdolfgfeio>).
+The Chrome Web Store dashboard rejects a manifest `key` field on a brand-new
+item (see `npm run build:store`, which omits it — outputs to `store-build/`,
+not `dist/`), so there was never a way to make the published ID match the
+pinned local one.
+
+This matters because Pipedrive's OAuth app allows only **one** registered
+Callback URL, and reuses that same URL for its uninstall webhook too (see
+`mem/design/pipedrive-uninstall-v1.md`) — unlike HubSpot, which accepts
+multiple redirect URLs. As of the initial Pipedrive Marketplace submission,
+that one Callback URL is registered as
+`https://dpadpffnlgkbpakbfnnjnegdolfgfeio.chromiumapp.org/` (the **published**
+ID) — connecting Pipedrive from a local unpacked build will fail with
+"Redirect URI match failed" until either the Callback URL is switched back
+temporarily, or a second, dev-only Pipedrive app is registered for local
+testing. HubSpot's redirect URL should have both IDs registered once HubSpot
+comes back into scope (see `ConnectCrmCard.tsx`'s hidden flag), so this
+doesn't bite the same way there.
 
 **This is a developer-only workflow** — there is no way for a website to
 silently or automatically install a Chrome extension for a visitor. Getting
