@@ -142,6 +142,28 @@ this to whoever's editing that project):
 6. **Submit for review.**
 7. Once approved, copy the real listing URL (`https://chromewebstore.google.com/detail/<id>`) and swap it into `chromeStoreUrl` in the Lovable site's `src/content/site.ts`, replacing the placeholder.
 
+## Live status
+
+Published: <https://chromewebstore.google.com/detail/corner/dpadpffnlgkbpakbfnnjnegdolfgfeio>
+(the real, Chrome-assigned extension ID — different from the pinned local/
+unpacked dev ID, `noljedpanlelibpakngfgmiopmcdhgdo`; see README.md's
+"pinned extension ID" section and `mem/design/pipedrive-uninstall-v1.md`
+for why that split matters for Pipedrive OAuth specifically).
+
+**"This extension is not trusted by Enhanced Safe Browsing" install
+warning** — seen on the listing page by anyone who has Chrome's Enhanced
+Safe Browsing setting turned on (`chrome://settings/security`; most users
+are on the default Standard protection and never see this). This is not a
+Chrome Web Store review flag or a problem with Corner — Google's own docs
+state new developer accounts simply take "a few months" of a clean policy
+record to be marked trusted, automatically, with no application process.
+Users can still click "Continue to install." One thing worth doing:
+verify `mycornercoach.com` in [Google Search Console](https://search.google.com/search-console)
+and make sure that same domain is set as Corner's website in the
+Developer Dashboard's store listing — several developers in Google's own
+support threads reported this helped their verified/trusted status
+appear sooner, though it's not officially documented as a guarantee.
+
 ## Why this matters early, not right before "launch day"
 
 Chrome's review process typically takes a few days but can run longer,
