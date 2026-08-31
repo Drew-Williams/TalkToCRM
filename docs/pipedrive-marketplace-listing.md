@@ -55,58 +55,112 @@ Pipedrive requires one recording covering three docs at once:
 [uninstallation](https://pipedrive.readme.io/docs/app-uninstallation) — plus
 "demonstrate the key functionality." It's only ever seen internally by the
 review team, so it doesn't need production polish, just to clearly show
-each required moment in order. Roughly 3–4 minutes total.
+each required moment in order and say each line below (or close to it)
+out loud while you do. Roughly 3.5–4.5 minutes total. Read each "SAY" line
+naturally, in your own voice — it doesn't need to be word-for-word.
 
-**1. Scopes and permissions (~30s)**
-- Show: Developer Hub → the app's "OAuth & access scopes" tab, with the
-  five requested scopes visible (`base`, `deals:read`, `contacts:read`,
-  `activities:read`, `mail:read`).
-- Say, pointing at each: "Corner only requests read scopes — it can't create,
-  edit, or delete anything in Pipedrive. `deals:read` lets it see a deal's
-  stage, value, and notes; `contacts:read` lets it see who's on the deal;
-  `activities:read` lets it see logged calls and meetings; `mail:read` lets
-  it see relevant email threads. `base` is the default scope every app gets,
-  for basic account info."
+Before you hit record: have a Pipedrive test account signed in, a real
+deal open in a background tab, and Corner already showing "not connected"
+(disconnect it first if it's currently connected) so scene 2 is genuine,
+not staged.
 
-**2. Installation flow (~60–90s)**
-- Show: the Pipedrive Marketplace listing page → click "Install now" (or
-  "Proceed to install") → the OAuth confirmation dialog opens in a new tab,
-  showing those same scopes → click "Allow and Install."
-- Show: back in Chrome, open the Corner side panel (click the toolbar icon)
-  → it shows "Connect Pipedrive" → click it → the same Pipedrive OAuth
-  screen opens (via `chrome.identity`, as a popup this time, not a new
-  tab) → Allow → side panel now shows "Pipedrive: Connected."
-- Say: "Installing from the Marketplace and connecting from inside the
-  extension both go through this same Pipedrive consent screen. Once
-  approved, Corner shows the connected state immediately — no extra setup
-  step."
+---
 
-**3. Key functionality (~60–90s)**
-- Show: navigate to a real deal page in Pipedrive → the side panel
-  automatically detects it and shows the deal's name, stage, and amount →
-  click "Talk about this deal" → say something short out loud (e.g. "catch
-  me up on this deal") → Corner responds out loud, referencing the deal's
-  actual stage/value/recent activity.
-- Say: "Corner reads deal data straight off the page you're already
-  looking at — no separate dashboard, no manual entry. 'Talk about this
-  deal' starts a live voice conversation; Corner already knows this
-  deal's context and coaches the rep out loud."
+### Scene 1 — Scopes and permissions (~30s)
 
-**4. Uninstallation (~30–45s)**
-- Show: in Pipedrive, go to Settings → Marketplace apps (or wherever
-  installed apps are managed for this account) → find Corner → Uninstall.
-- Show: back in the Corner side panel, either reopen it or try to open a
-  deal/click "Talk" again — it should now show a "Pipedrive connection
-  needs reconnecting" prompt instead of pretending the old connection
-  still works (see `mem/design/pipedrive-uninstall-v1.md` for why this is
-  reactive rather than an instant server-pushed notification — Pipedrive's
-  uninstall webhook reuses the same single Callback URL as OAuth, which
-  for this Chrome-extension app has to be the extension's own
-  `chromiumapp.org` address, not a server Corner controls).
-- Say: "When a user uninstalls Corner, Pipedrive revokes its access.
-  The next time Corner tries to use that connection, it detects the
-  revoked access, clears it, and asks the rep to reconnect — it never
-  keeps working with a broken connection silently."
+**ON SCREEN:** Developer Hub → your app → "OAuth & access scopes" tab,
+with all five requested scopes visible on screen at once.
+
+**SAY:**
+> "Before we get into installing the app, here's what Corner actually asks for. It's five scopes, and every one of them is read-only — Corner cannot create, edit, or delete anything in a user's Pipedrive account.
+>
+> `deals:read` lets it see a deal's stage, value, and notes. `contacts:read` lets it see who's attached to the deal. `activities:read` lets it see logged calls and meetings. `mail:read` lets it see relevant email threads tied to the deal. And `base` is the default scope every Pipedrive app gets automatically, for basic account info like the user's name.
+>
+> That's the entire footprint — no write access of any kind."
+
+---
+
+### Scene 2 — Installation flow (~75–90s)
+
+**ON SCREEN:** The Pipedrive Marketplace listing page for Corner (or the
+"Proceed to install" test link) → click it.
+
+**SAY:**
+> "Now let's install it the way a real user would. I'll click Install from the Marketplace listing."
+
+**ON SCREEN:** The OAuth confirmation dialog opens in a new tab, showing
+the same five scopes from Scene 1. Click "Allow and Install."
+
+**SAY:**
+> "This opens Pipedrive's own consent screen, showing the exact same scopes I just walked through. I'll click Allow and Install."
+
+**ON SCREEN:** Switch to Chrome, click the Corner toolbar icon to open
+the side panel. It shows a "Connect Pipedrive" button (not yet connected).
+Click it.
+
+**SAY:**
+> "Now, over in the Chrome extension itself — Corner's interface lives in the browser's side panel, not inside Pipedrive. The first thing it asks for is connecting your Pipedrive account, so I'll click Connect."
+
+**ON SCREEN:** The same Pipedrive OAuth consent screen opens again, this
+time as a popup window (via `chrome.identity`) rather than a browser tab.
+Click Allow. The side panel updates to show "Pipedrive — Connected."
+
+**SAY:**
+> "Same consent screen, same scopes, just opened from inside the extension this time. Once I approve it, Corner shows the connected state immediately — that's it, no further setup, no separate account to create."
+
+---
+
+### Scene 3 — Key functionality (~75–90s)
+
+**ON SCREEN:** Switch to the tab with a real Pipedrive deal open. The
+Corner side panel automatically detects it and shows the deal's name,
+stage, and amount within a couple seconds.
+
+**SAY:**
+> "Here's a real deal open in Pipedrive. Corner detects it automatically the moment the page loads — you can see it already showing the deal name, stage, and value here in the side panel, read straight off the page. No dashboard to switch to, nothing to type in."
+
+**ON SCREEN:** Click "Talk about this deal." Wait for the connecting
+state, then speak a short, real question out loud (e.g. "Catch me up on
+this deal" or "What's the risk here?").
+
+**SAY (before clicking):**
+> "Now I'll click Talk about this deal and actually talk to it."
+
+**(then speak your real question to the agent, and let it respond — capture its actual spoken answer referencing the deal's real stage/value/activity)**
+
+**SAY (after the response):**
+> "That's the core of Corner — a live voice conversation where it already knows this specific deal's context, and coaches the rep out loud instead of just displaying data."
+
+---
+
+### Scene 4 — Uninstallation (~30–45s)
+
+**ON SCREEN:** In Pipedrive, go to Settings → Marketplace apps (or
+wherever installed apps are managed for this account) → find Corner →
+Uninstall.
+
+**SAY:**
+> "Last, uninstalling. I'll go to the installed apps list in Pipedrive settings and remove Corner."
+
+**ON SCREEN:** Back in Chrome, reopen the Corner side panel (or click
+"Talk about this deal" again on the still-open deal page). It now shows
+a "Pipedrive connection needs reconnecting" message instead of the
+previous connected state.
+
+**SAY:**
+> "And back in the extension — the next time Corner tries to use that connection, it detects that access was revoked, clears the stale connection on its own, and asks the rep to reconnect. It never keeps working silently with a broken connection."
+
+---
+
+**Why Scene 4 looks the way it does, not like a server push:** Pipedrive's
+uninstall notification is a webhook sent to the same single Callback URL
+registered for OAuth — and for a Chrome extension using
+`chrome.identity.launchWebAuthFlow`, that URL has to be the extension's
+own `chromiumapp.org` address, which isn't a server Corner controls.
+There's no way to receive that webhook directly given that constraint
+(see `mem/design/pipedrive-uninstall-v1.md` for the full reasoning), so
+Corner instead detects the revoked access reactively, the next time the
+connection is actually used — which is exactly what Scene 4 shows.
 
 ## Still to fill in (not yet drafted here)
 
