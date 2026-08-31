@@ -37,3 +37,10 @@ verify_jwt = false
 
 [functions.company-profile]
 verify_jwt = false
+
+# ops-dashboard has no Supabase caller at all -- a human navigates here
+# directly in a browser -- so there's no bearer token to check at the
+# platform level. It checks its own shared-secret query param instead (see
+# the function's own comment).
+[functions.ops-dashboard]
+verify_jwt = false

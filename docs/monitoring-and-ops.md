@@ -1,15 +1,43 @@
 # Monitoring Corner — a lightweight ops/CSM setup
 
-No new dashboard was built for this — everything below either already
-exists (four different tools already collecting exactly this data) or is
-a handful of SQL views on top of the existing schema
-(`supabase/migrations/20260831130000_ops_views.sql` and
-`20260831130100_ops_views_trial_accuracy.sql`). Query the views directly
-in the [Supabase SQL Editor](https://supabase.com/dashboard/project/ziccpxpvrgbsjybjhzhv/sql/new)
-— that editor runs as the `postgres` role, which bypasses RLS, so they
-just work there with no extra login or API key needed. They are
-deliberately **not** reachable by the extension itself or by any signed-in
-rep's own session (every one of them is cross-user by design).
+## The dashboard — open `ops-dashboard.html`
+
+The fastest way to check on Corner: open **`ops-dashboard.html`** (repo
+root) in a browser — download it once, then just double-click it open
+whenever you want (`file://` URL, no server, no login). It fetches live
+data from the `ops-dashboard` edge function and renders the funnel
+snapshot, the trial watchlist/lapsed-trials lists, and daily
+signups/calls charts, styled to match the brand.
+
+**Never share this file or send it anywhere** — it has a private access
+key (`OPS_DASHBOARD_TOKEN`) embedded in it, scoped to read (only read)
+this cross-user data. If it ever leaks, rotate the token:
+`supabase secrets set OPS_DASHBOARD_TOKEN=<new value>`, then update the
+`KEY` constant in the file's `<script>` and redeploy the function.
+
+**Why this isn't just a normal webpage URL you can bookmark instead:**
+Supabase forcibly rewrites any edge function `GET` response with a
+`text/html` content type to `text/plain` on projects without a paid
+Custom Domain add-on (an anti-abuse measure for the shared `*.supabase.co`
+domain) — discovered by trying to serve the dashboard directly as HTML
+from the function and finding Chrome received plain text regardless of
+the `Content-Type` header actually being set. `ops-dashboard`'s edge
+function therefore only ever returns JSON; all the rendering happens
+client-side in the local HTML file instead, which sidesteps the
+restriction entirely since it isn't served by Supabase at all.
+
+## Everything underneath it — SQL views, if you ever want to look directly
+
+Nothing new was built for the actual data — it's a handful of SQL views
+on top of the existing schema (`supabase/migrations/20260831130000_ops_views.sql`
+and `20260831130100_ops_views_trial_accuracy.sql`), which is exactly what
+`ops-dashboard`'s edge function queries. Query them directly in the
+[Supabase SQL Editor](https://supabase.com/dashboard/project/ziccpxpvrgbsjybjhzhv/sql/new)
+if you ever want to slice something the dashboard doesn't show — that
+editor runs as the `postgres` role, which bypasses RLS, so they just work
+there with no extra login or API key needed. They are deliberately **not**
+reachable by the extension itself or by any signed-in rep's own session
+(every one of them is cross-user by design).
 
 ## The one query for "how's Corner doing right now"
 
@@ -95,8 +123,8 @@ that checking manually stops being realistic.
 
 ## Suggested weekly rhythm
 
-1. `select * from public.ops_funnel_summary;` — the headline numbers.
-2. `select * from public.ops_trial_watchlist;` — anyone worth a personal nudge before their trial ends.
+1. Open `ops-dashboard.html` — the funnel snapshot and trial watchlist in one glance.
+2. Anyone on the watchlist worth a personal nudge before their trial ends.
 3. Skim the Chrome Web Store install trend and any new reviews.
 4. Skim Stripe for any failed payments or new subscribers.
 5. Spot-check 1–2 recent ElevenLabs conversation transcripts for coaching quality.
