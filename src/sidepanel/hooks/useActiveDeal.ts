@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DetectedDeal } from "@/lib/deal-detection/types";
 import type { ExtensionMessage } from "@/lib/chrome/messaging";
 
@@ -25,10 +25,11 @@ function sleep(ms: number): Promise<void> {
  * window. Pulls the current state on mount/tab-switch and stays live via the
  * background worker's ACTIVE_DEAL_UPDATED broadcasts in between.
  */
-export function useActiveDeal(): ActiveDealState {
+export function useActiveDeal(): ActiveDealState & { refresh: () => void } {
   const [deal, setDeal] = useState<DetectedDeal | null>(null);
   const [loading, setLoading] = useState(true);
   const activeTabIdRef = useRef<number | null>(null);
+  const refreshRef = useRef<(retryDelaysMs: number[]) => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +61,7 @@ export function useActiveDeal(): ActiveDealState {
       setLoading(false);
     }
 
+    refreshRef.current = refresh;
     refresh(INITIAL_RETRY_DELAYS_MS);
 
     function onMessage(message: ExtensionMessage) {
@@ -94,6 +96,13 @@ export function useActiveDeal(): ActiveDealState {
     // Chrome itself loses focus (e.g. switching to another application
     // entirely) — nothing to resolve there, only worth reacting to focus
     // actually landing back on a real window.
+    //
+    // This event-based trigger turned out not to be fully reliable in
+    // practice (still reproduced "no deal detected" after connecting on
+    // at least one real run, cause unconfirmed — window focus events are a
+    // known-flaky corner of the extension APIs on some platforms) — see
+    // the public refresh() below for the deterministic fix layered on top
+    // of this, not a replacement for it.
     function onWindowFocusChanged(windowId: number) {
       if (windowId === chrome.windows.WINDOW_ID_NONE) return;
       refresh(TAB_SWITCH_RETRY_DELAYS_MS);
@@ -108,5 +117,15 @@ export function useActiveDeal(): ActiveDealState {
     };
   }, []);
 
-  return { deal, loading };
+  // Deterministic companion to onWindowFocusChanged above: rather than
+  // solely trusting that Chrome's window-focus event fires reliably right
+  // as the OAuth popup closes, App.tsx also calls this directly the moment
+  // connectCrm() actually resolves — tied to the real event we care about
+  // (a CRM connection just finished), not an indirect signal that's
+  // supposed to correlate with it.
+  const refresh = useCallback(() => {
+    refreshRef.current(TAB_SWITCH_RETRY_DELAYS_MS);
+  }, []);
+
+  return { deal, loading, refresh };
 }

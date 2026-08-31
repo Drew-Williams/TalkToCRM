@@ -19,9 +19,21 @@ import { supabase } from "@/lib/supabase/client";
 import { dismissProfileNudge } from "@/lib/onboarding/state";
 
 export default function App() {
-  const { deal, loading: dealLoading } = useActiveDeal();
+  const { deal, loading: dealLoading, refresh: refreshActiveDeal } = useActiveDeal();
   const { session, loading: sessionLoading } = useSupabaseSession();
   const { connections, loading: connectionsLoading, refresh: refreshConnections } = useCrmConnections(!!session);
+
+  // Connecting a CRM's OAuth popup can close and return focus without ever
+  // actually deactivating/reactivating the deal tab, which is the trigger
+  // useActiveDeal normally listens for — see that hook's own comment on why
+  // its window-focus-based fallback for this isn't fully reliable on its
+  // own. Re-resolving the active deal directly, tied to the real "a CRM
+  // connection just finished" event, is the deterministic fix layered on
+  // top of that.
+  function handleCrmConnected() {
+    refreshConnections();
+    refreshActiveDeal();
+  }
   const {
     subscription,
     isActive: subscriptionActive,
@@ -90,11 +102,11 @@ export default function App() {
           {shouldNudge && <LinkAccountBanner />}
           {showConnectCard && (
             <>
-              <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={refreshConnections} />
+              <ConnectCrmCard connections={connections} loading={connectionsLoading} onConnected={handleCrmConnected} />
               {hasAnyConnection && <ProfileCard />}
             </>
           )}
-          <DealStatusCard deal={deal} loading={dealLoading} onReconnected={refreshConnections} />
+          <DealStatusCard deal={deal} loading={dealLoading} onReconnected={handleCrmConnected} />
           <TalkToCrmCard deal={deal} />
           {showProfileNudge && (
             <ProfileNudgeBanner

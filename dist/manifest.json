@@ -3,7 +3,7 @@
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoj7bR3NJtsnUOHP4wiAkjgNocxNxNChowoXnR0QorKyAF9skjkC7eLglzYyy4OgcEk1Rxb0Jq/6v6kW5tUvfEB+7obqh+lXkxlCWrCzFtfafg2EiVHZ8OlJmYeff6EsrIY3G5m6frg4k7XuAuyrHAS/YHAbuV0fopyK6dlRIWxwntYQbeWnJxD7Lc1T53GA9ImGN+YWT7djR/x33eWHTLfQ+AcSpzq/7ELKSbyEQUeZ6ckCX79zKvShZRL1VLK7OHvpkSajJYeSlBAGzCNbdjlDEBnAC1acTEhzCXPZMN+i/5xvXy1OaRBz33fxI3eLxAR1vdnG4YTS0mvldcZ1OQIDAQAB",
   "name": "Corner",
   "description": "The private deal coach you talk to — reads live Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
