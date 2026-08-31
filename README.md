@@ -104,7 +104,23 @@ that one Callback URL is registered as
 ID) — connecting Pipedrive from a local unpacked build will fail with
 "Redirect URI match failed" until either the Callback URL is switched back
 temporarily, or a second, dev-only Pipedrive app is registered for local
-testing. HubSpot's redirect URL should have both IDs registered once HubSpot
+testing.
+
+**The redirect URI now includes a path segment, not just a bare root**
+(`.../pipedrive-oauth-callback` — see `connect.ts`), added in v0.1.1 after
+Pipedrive's Developer Hub started rejecting a bare
+`https://<id>.chromiumapp.org/` in its Callback URL field with "Enter a
+valid URL," but only at "Send to review" submission time, not during
+normal field editing — confusing to track down, but confirmed directly
+against a real submission attempt. **Pipedrive's registered Callback URL
+must be updated to match this new path once v0.1.1 is live on the Chrome
+Web Store and has had time to roll out to existing installs** — not
+before, since real users are connected via the old bare-root URL on the
+currently-published version, and flipping the Developer Hub setting
+first would break new connection attempts with a redirect_uri mismatch
+in the interim.
+
+HubSpot's redirect URL should have both IDs registered once HubSpot
 comes back into scope (see `ConnectCrmCard.tsx`'s hidden flag), so this
 doesn't bite the same way there.
 

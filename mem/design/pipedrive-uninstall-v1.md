@@ -71,6 +71,25 @@ URL is switched back temporarily or a second, dev-only Pipedrive app is
 registered. See README.md's "pinned extension ID" section for current
 status of which ID is registered.
 
+**Second addendum: the Callback URL itself turned out to be invalid, for
+a different reason.** Attempting to actually submit the Marketplace app
+for review surfaced a second, unrelated problem with the same field:
+Pipedrive's Developer Hub rejects a bare-root
+`https://<id>.chromiumapp.org/` Callback URL with "Enter a valid URL" —
+but only at "Send to review" submission time, not during normal field
+editing, which made this genuinely confusing to pin down (retyping the
+exact same value during editing showed no error at all). Fixed in
+v0.1.1 by giving `chrome.identity.getRedirectURL()` a path segment
+(`<provider>-oauth-callback` — see `connect.ts`); Chrome's
+`launchWebAuthFlow` interception works on the whole
+`chromiumapp.org/<id>` origin regardless of path, so this has no effect
+on the client-side flow itself, only on satisfying Pipedrive's stricter
+form validation. Since real users were already connected via the old
+bare-root URL on the live published version, the registered Callback
+URL must not be switched to the new path until v0.1.1 is actually live
+and has had time to propagate — see README.md's "pinned extension ID"
+section for current status.
+
 **What this means for the submission video.** The uninstallation segment
 can't show a server genuinely receiving Pipedrive's webhook (there isn't
 one reachable yet) — it should instead show the *user-visible* behavior:
