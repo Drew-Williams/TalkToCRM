@@ -17,11 +17,24 @@ export function watchAndReportDeal(detect: (url: string) => DetectedDeal | null)
     if (sameDeal) return; // avoid spamming background on every poll tick when nothing changed
 
     const message: ExtensionMessage = next ? { type: "DEAL_DETECTED", deal: next } : { type: "DEAL_CLEARED" };
-    chrome.runtime.sendMessage(message).catch(() => {
-      // Background isn't listening yet (e.g. right after install/reload).
-      // Not fatal: the side panel's pull path (GET_CURRENT_DEAL) below will
-      // still get the right answer the next time it asks.
-    });
+    try {
+      chrome.runtime.sendMessage(message).catch(() => {
+        // Background isn't listening yet (e.g. right after install/reload).
+        // Not fatal: the side panel's pull path (GET_CURRENT_DEAL) below
+        // will still get the right answer the next time it asks.
+      });
+    } catch {
+      // Reloading/updating the extension while this tab was already open
+      // orphans this content script instance permanently — every
+      // chrome.runtime.* call throws synchronously (not a promise
+      // rejection, an actual throw) with "Extension context invalidated"
+      // from this point on, for the rest of this tab's lifetime, until a
+      // real page refresh re-injects a fresh copy. That's expected during
+      // development (reloading the unpacked extension) and can't be
+      // un-invalidated from here, so swallow it rather than let it spam
+      // chrome://extensions' error log as an uncaught error on every
+      // watchUrlChanges tick.
+    }
   }
 
   report(detect(window.location.href));

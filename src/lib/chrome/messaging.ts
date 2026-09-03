@@ -15,4 +15,8 @@ export type ExtensionMessage =
   | { type: "GET_ACTIVE_DEAL" }
   | { type: "ACTIVE_DEAL_RESULT"; deal: DetectedDeal | null; tabId: number | null }
   // background -> side panel (broadcast), fired whenever a tracked tab's deal changes
-  | { type: "ACTIVE_DEAL_UPDATED"; deal: DetectedDeal | null; tabId: number };
+  | { type: "ACTIVE_DEAL_UPDATED"; deal: DetectedDeal | null; tabId: number }
+  // background -> side panel (broadcast), fired on the "toggle-talk" keyboard
+  // shortcut (see manifest.config.ts commands) — useTalkSession decides
+  // whether that means start or end based on its own current status.
+  | { type: "TOGGLE_TALK" };

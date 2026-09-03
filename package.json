@@ -1,16 +1,21 @@
 {
-  "name": "talk-to-crm",
+  "name": "corner",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/check-client-env.mjs",
     "build": "vite build",
+    "build:store": "node scripts/check-client-env.mjs && BUILD_TARGET=store vite build --outDir store-build",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@elevenlabs/client": "^1.15.0",
+    "@radix-ui/react-slot": "^1.3.0",
+    "@supabase/supabase-js": "^2.110.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.462.0",

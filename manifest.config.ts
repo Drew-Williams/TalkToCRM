@@ -1,8 +1,8 @@
 import { defineManifest } from "@crxjs/vite-plugin";
 import pkg from "./package.json";
 
-// Step 1 scope: detect the deal a rep is looking at and show it in the side
-// panel. No AI, no CRM writes yet — so permissions stay minimal on purpose.
+// Permissions stay as minimal as each step actually needs, not maximal for
+// whatever might come later:
 //
 //   - "sidePanel"      → render our UI as a Chrome side panel instead of a popup
 //   - host_permissions → ONLY the two CRM origins we read deal pages from.
@@ -10,11 +10,59 @@ import pkg from "./package.json";
 //     own tab via chrome.runtime.MessageSender, and that sender info is
 //     populated for any page matched by host_permissions, so the background
 //     worker never needs broader tab visibility.
+//   - "identity" and "scripting" were added in later steps — see their own
+//     comments below for why each is needed.
+//
+// Whether to include the pinned "key" field below — controlled by the
+// BUILD_TARGET env var (see package.json's "build:store" script), not a
+// permanent code branch. Chrome's local/unpacked loader has always
+// respected a manifest "key" field to pin a stable ID across reinstalls
+// (see the comment below), but the Chrome Web Store dashboard's "Add new
+// item" flow now flatly rejects any manifest containing one at all — not
+// just a mismatched one, a *new* item upload with "key" present errors
+// with "key field is not allowed in manifest." There is no known way
+// around this on Chrome's side as of testing this (Aug 2026): the store
+// now always assigns its own ID for a brand-new item, full stop, so the
+// "upload a zip with your own key as the very first upload to pin the
+// eventual published ID" trick that used to work no longer does. The zip
+// actually uploaded to the dashboard must therefore omit "key" entirely,
+// while the zip used for local/unpacked testing still needs it — hence
+// this toggle instead of just deleting the field outright.
+const isStoreBuild = process.env.BUILD_TARGET === "store";
+
+// Still no CRM-write permissions of any kind — push_to_crm isn't built yet.
 export default defineManifest({
   manifest_version: 3,
-  name: "Talk to CRM",
+  // Pins the extension's ID to a fixed value (noljedpanlelibpakngfgmiopmcdhgdo)
+  // regardless of which machine/folder it's unpacked from or how many times
+  // it gets removed and reinstalled. Without this, Chrome derives a random
+  // ID from the install path, which breaks every OAuth redirect URL
+  // registered with Pipedrive/HubSpot each time the extension is reloaded
+  // from a fresh unzip. This is the PUBLIC half of a keypair generated
+  // solely to compute that ID — it grants no other capability and is safe
+  // to commit. Omitted entirely for a store build — see isStoreBuild above —
+  // meaning the published extension's real ID is now whatever the Chrome
+  // Web Store dashboard assigns on creation, found on the item's dashboard
+  // page once created; that ID needs to be added as a *second* registered
+  // OAuth redirect URI in the Pipedrive/HubSpot app settings (both accept
+  // multiple), alongside the one already registered for this pinned local-
+  // testing ID — they are now permanently different IDs, not the same one.
+  ...(isStoreBuild
+    ? {}
+    : {
+        key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoj7bR3NJtsnUOHP4wiAkjgNocxNxNChowoXnR0QorKyAF9skjkC7eLglzYyy4OgcEk1Rxb0Jq/6v6kW5tUvfEB+7obqh+lXkxlCWrCzFtfafg2EiVHZ8OlJmYeff6EsrIY3G5m6frg4k7XuAuyrHAS/YHAbuV0fopyK6dlRIWxwntYQbeWnJxD7Lc1T53GA9ImGN+YWT7djR/x33eWHTLfQ+AcSpzq/7ELKSbyEQUeZ6ckCX79zKvShZRL1VLK7OHvpkSajJYeSlBAGzCNbdjlDEBnAC1acTEhzCXPZMN+i/5xvXy1OaRBz33fxI3eLxAR1vdnG4YTS0mvldcZ1OQIDAQAB",
+      }),
+  name: "Corner",
+  // Chrome Web Store hard-caps manifest "description" at 132 characters —
+  // separate from (and much shorter than) the store listing's own
+  // "detailed description" field, which has no such limit. Keep this one
+  // terse; the fuller pitch lives in docs/chrome-web-store-listing.md for
+  // the listing itself.
+  // Pipedrive-only for the MVP launch (HubSpot support still fully exists
+  // in code — adapter, OAuth, deal detection — just not advertised or
+  // offered as a connect option right now; see ConnectCrmCard.tsx).
   description:
-    "Voice-first sales coaching that reads live HubSpot/Pipedrive deal data and coaches the rep out loud — no chat UI, no silent CRM writes.",
+    "The private deal coach you talk to — reads live Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
   version: pkg.version,
 
   // Deliberately NOT under public/ — Vite auto-copies that dir's contents to
@@ -29,7 +77,7 @@ export default defineManifest({
   },
 
   action: {
-    default_title: "Talk to CRM",
+    default_title: "Corner",
   },
 
   background: {
@@ -41,20 +89,83 @@ export default defineManifest({
     default_path: "src/sidepanel/index.html",
   },
 
-  permissions: ["sidePanel"],
+  // A real full-tab options page — not "an options page" in the ordinary
+  // settings-tweaking sense, but a full-tab surface to request microphone
+  // access from. Chrome's getUserMedia permission prompt has a documented
+  // reliability issue specifically inside side panels (it can silently
+  // auto-deny without ever showing a dialog); requesting the same
+  // permission from a normal tab is more reliable, and since Chrome scopes
+  // media permissions per *origin*, not per-page, granting it here covers
+  // the side panel too. open_in_tab: true is required — the default
+  // (embedded inside chrome://extensions) can't call getUserMedia at all.
+  // Opened automatically right after install (see src/background/index.ts)
+  // and on demand from the side panel's mic-blocked alert.
+  options_ui: {
+    page: "src/onboarding/index.html",
+    open_in_tab: true,
+  },
 
-  host_permissions: ["https://app.hubspot.com/*", "https://*.pipedrive.com/*"],
+  // "identity" is for chrome.identity.launchWebAuthFlow (HubSpot/Pipedrive
+  // OAuth connect) — it does NOT grant access to Google account info the
+  // way chrome.identity.getAuthToken would; we never call that API.
+  //
+  // "scripting" is so background/index.ts can proactively inject the
+  // content scripts below into HubSpot/Pipedrive tabs that were already
+  // open *before* the extension was installed/reloaded — Chrome only auto-
+  // injects content_scripts into tabs navigated to afterwards, so without
+  // this, every reload during development leaves already-open deal tabs
+  // stuck on "No deal detected" until manually refreshed.
+  //
+  // "storage" is for chrome.storage.local — without this permission
+  // declared, `chrome.storage` is undefined entirely (not just its local/
+  // onChanged sub-APIs), not merely permission-denied at call time. That
+  // silently crashed the side panel to a completely blank screen the
+  // moment any code called it during mount (no error boundary — see
+  // src/lib/supabase/client.ts's comment on the same failure mode for a
+  // different cause): LinkAccountBanner's dismiss-snooze already used
+  // chrome.storage.local without this ever being declared, but only
+  // rendered rarely enough (gated on shouldNudge) that it went unnoticed;
+  // the onboarding-flags nudge (useOnboardingFlags.ts) reads it
+  // unconditionally on every mount, which is what surfaced this for real.
+  permissions: ["sidePanel", "identity", "scripting", "storage"],
 
-  // document_start (not document_idle): both CRMs are SPAs and we patch
+  // Pipedrive-only for the MVP submission — the app.hubspot.com host
+  // permission is deliberately NOT requested here even though the
+  // adapter/OAuth/deal-detection code for it still fully exists (see
+  // ConnectCrmCard.tsx's hidden flag). Chrome's own review guidance is
+  // explicit that requesting a permission the extension doesn't actually
+  // use is grounds for rejection, not just extra scrutiny — and since
+  // HubSpot isn't offered as a connect option right now, that host
+  // permission would be exactly that: unused from a reviewer's point of
+  // view. Add "https://app.hubspot.com/*" back here (and the matching
+  // content_scripts entry below) in the same change that un-hides HubSpot
+  // in the UI, not before.
+  host_permissions: ["https://*.pipedrive.com/*"],
+
+  // Hands-free start/stop for the voice coach — chrome.commands.onCommand
+  // in src/background/index.ts opens the side panel (if needed) and
+  // broadcasts TOGGLE_TALK, which useTalkSession picks up to start or end
+  // the call depending on its current status. The rep can remap this
+  // anytime from chrome://extensions/shortcuts. Still fully functional
+  // even though the "Talk about this deal" button no longer shows a
+  // shortcut badge for it (removed — an unlabeled key-combo chip on the
+  // button read as confusing clutter, not helpful, for a mouse-driven
+  // click target).
+  commands: {
+    "toggle-talk": {
+      suggested_key: { default: "Ctrl+Shift+K", mac: "Command+Shift+K" },
+      description: "Start or stop talking to Corner about the open deal",
+    },
+  },
+
+  // document_start (not document_idle): Pipedrive is an SPA and we patch
   // history.pushState/replaceState to detect in-app deal navigation (see
   // src/lib/spa-url-watcher.ts). Patching before the host page's own bundle
   // loads means it can't cache a reference to the un-patched original.
+  // The HubSpot content script (src/content/hubspot.content.ts) still
+  // exists and is untouched — just not registered here, matching
+  // host_permissions above being Pipedrive-only for this submission.
   content_scripts: [
-    {
-      matches: ["https://app.hubspot.com/*"],
-      js: ["src/content/hubspot.content.ts"],
-      run_at: "document_start",
-    },
     {
       matches: ["https://*.pipedrive.com/*"],
       js: ["src/content/pipedrive.content.ts"],

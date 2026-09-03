@@ -10,3 +10,5 @@ dist-*
 *.log
 .vite
 *.tsbuildinfo
+supabase/.temp
+deno.lock

@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "Corner",
+  "description": "The private deal coach you talk to — reads live Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
+  "version": "0.1.2",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Corner"
+  },
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "options_ui": {
+    "page": "src/onboarding/index.html",
+    "open_in_tab": true
+  },
+  "permissions": [
+    "sidePanel",
+    "identity",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.pipedrive.com/*"
+  ],
+  "commands": {
+    "toggle-talk": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Start or stop talking to Corner about the open deal"
+    }
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/pipedrive.content.ts-DYZICAK3.js"
+      ],
+      "matches": [
+        "https://*.pipedrive.com/*"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://*.pipedrive.com/*"
+      ],
+      "resources": [
+        "assets/pipedrive.content.ts-DYZICAK3.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}

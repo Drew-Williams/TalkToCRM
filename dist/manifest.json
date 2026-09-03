@@ -1,15 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Talk to CRM",
-  "description": "Voice-first sales coaching that reads live HubSpot/Pipedrive deal data and coaches the rep out loud — no chat UI, no silent CRM writes.",
-  "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoj7bR3NJtsnUOHP4wiAkjgNocxNxNChowoXnR0QorKyAF9skjkC7eLglzYyy4OgcEk1Rxb0Jq/6v6kW5tUvfEB+7obqh+lXkxlCWrCzFtfafg2EiVHZ8OlJmYeff6EsrIY3G5m6frg4k7XuAuyrHAS/YHAbuV0fopyK6dlRIWxwntYQbeWnJxD7Lc1T53GA9ImGN+YWT7djR/x33eWHTLfQ+AcSpzq/7ELKSbyEQUeZ6ckCX79zKvShZRL1VLK7OHvpkSajJYeSlBAGzCNbdjlDEBnAC1acTEhzCXPZMN+i/5xvXy1OaRBz33fxI3eLxAR1vdnG4YTS0mvldcZ1OQIDAQAB",
+  "name": "Corner",
+  "description": "The private deal coach you talk to — reads live Pipedrive deal data and coaches you out loud, no chat UI, no CRM writes.",
+  "version": "0.1.2",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "Talk to CRM"
+    "default_title": "Corner"
   },
   "background": {
     "service_worker": "service-worker-loader.js",
@@ -18,26 +19,32 @@
   "side_panel": {
     "default_path": "src/sidepanel/index.html"
   },
+  "options_ui": {
+    "page": "src/onboarding/index.html",
+    "open_in_tab": true
+  },
   "permissions": [
-    "sidePanel"
+    "sidePanel",
+    "identity",
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
-    "https://app.hubspot.com/*",
     "https://*.pipedrive.com/*"
   ],
+  "commands": {
+    "toggle-talk": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Start or stop talking to Corner about the open deal"
+    }
+  },
   "content_scripts": [
     {
       "js": [
-        "assets/hubspot.content.ts-loader-C_0-Sk23.js"
-      ],
-      "matches": [
-        "https://app.hubspot.com/*"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "js": [
-        "assets/pipedrive.content.ts-loader-DwcAWB9P.js"
+        "assets/pipedrive.content.ts-DYZICAK3.js"
       ],
       "matches": [
         "https://*.pipedrive.com/*"
@@ -48,21 +55,10 @@
   "web_accessible_resources": [
     {
       "matches": [
-        "https://app.hubspot.com/*"
-      ],
-      "resources": [
-        "assets/watch-and-report-BiK8TIsj.js",
-        "assets/hubspot.content.ts-DrlzFiy6.js"
-      ],
-      "use_dynamic_url": false
-    },
-    {
-      "matches": [
         "https://*.pipedrive.com/*"
       ],
       "resources": [
-        "assets/watch-and-report-BiK8TIsj.js",
-        "assets/pipedrive.content.ts-CFi6h5hE.js"
+        "assets/pipedrive.content.ts-DYZICAK3.js"
       ],
       "use_dynamic_url": false
     }
