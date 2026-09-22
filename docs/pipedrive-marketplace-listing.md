@@ -162,11 +162,71 @@ There's no way to receive that webhook directly given that constraint
 Corner instead detects the revoked access reactively, the next time the
 connection is actually used — which is exactly what Scene 4 shows.
 
+## Setup and installation info
+
+**Setup/installation instructions** (shown to users deciding whether to
+install, plain step-by-step):
+> 1. Click "Install now" and approve the requested permissions — Corner only ever reads deal, contact, activity, and mail data; it never writes to Pipedrive without your explicit confirmation.
+> 2. Open the Corner extension from your Chrome toolbar (pin it for one-click access) and click "Connect Pipedrive" — this reuses the same account you just installed the app with.
+> 3. Open any deal in Pipedrive. Corner detects it automatically and shows its stage, value, and recent activity in the side panel.
+> 4. Click "Talk about this deal" and start talking — Corner already knows the deal's context.
+>
+> No separate account to create, no configuration screen, no admin setup required. Your first 7 days of Corner Pro are free from the moment you install.
+
+**Does this app require any special account/admin setup?** No — any
+Pipedrive user can install and connect on their own; no admin
+pre-configuration is required (matches the "handle non-admin users
+installing the app" requirement in Pipedrive's own review checklist,
+since Corner requests no `admin` scope at all).
+
+## Support and legal info
+
+**Support email:** `success@salesplaybookbuilder.com`
+
+**Support phone (optional):** `416-550-0497`
+
+**Privacy Policy URL:** `https://mycornercoach.com/privacy` (full text
+drafted in `docs/chrome-web-store-listing.md` — same policy for both
+stores, keep them in sync if it's ever updated)
+
+**Terms of Service URL:** needs a live page — no ToS has been drafted
+yet in this repo. A short, standard SaaS ToS (subscription billing terms,
+acceptable use, disclaimer of warranty, limitation of liability) would
+need to be drafted and published at e.g. `https://mycornercoach.com/terms`
+before this field can be filled in for real. Flag if you want this
+drafted now — it's a gap, not yet something to paste in.
+
 ## Still to fill in (not yet drafted here)
 
-- **General info** tab
-- **Marketplace listing** → general info / setup and installation info /
-  support and legal info / review info
-- App icon, category, keywords
+- **App icon, category, keywords** — icon already exists (`dist/icons/icon-128.png`,
+  reused from the Chrome Web Store submission); category is naturally
+  "Sales" or "Productivity" if Pipedrive offers those; keywords:
+  `voice`, `coaching`, `sales coaching`, `deal review`, `AI assistant`.
+- **Terms of Service** — see above, the one real gap left before "Send
+  to review" can go through cleanly if that field is required.
 
-Revisit and fill these in as the submission flow reaches them.
+## Publishing — what actually happens after "Send to review"
+
+1. Once every tab shows no red-flagged fields, go to **App review info**
+   and click **Send to review**. Provide the demo video URL, the use
+   case text, and a real Pipedrive test account + login for the
+   reviewer to actually use (per Pipedrive's own checklist — they log in
+   and test the app themselves, not just watch the video).
+2. The app's status changes to "In review" in Developer Hub, and
+   Pipedrive emails a confirmation. Their own current banner warns
+   review can take **up to 21 business days**.
+3. If approved: you'll get an email, and the status changes to
+   "Approved" in Developer Hub. **The app is unlisted from the
+   Marketplace by default even once approved** — it is not
+   automatically public.
+4. **To actually go live**, go to the app's row in Developer Hub, click
+   the **"..."** menu next to its name, and click **Publish**. Only
+   after this does it show up in the public Marketplace listing search.
+5. If rejected: you'll get an email with the specific reason(s); fix
+   those and resubmit — there's no separate appeals process, just a
+   corrected resubmission.
+
+There is no other "publish" action beyond that — Pipedrive's own review
+is the gate, and the Publish button afterward is a deliberate second
+step so an approved app doesn't go live before you're ready to announce
+it.
