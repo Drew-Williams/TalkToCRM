@@ -13,7 +13,7 @@ interface PaywallViewProps {
 const POLL_INTERVAL_MS = 5000;
 
 // Shown once the reverse trial's 7 free days are up (or a paid subscription
-// has lapsed) — the hard stop in "7 days of Pro on the house, $19/month
+// has lapsed) — the hard stop in "7 days of Pro on the house, $29/month
 // after." subscription is null for two different reasons that read the
 // same way to a rep: the trigger's initial trialing row somehow never
 // existed, or (far more likely) it existed and has since lapsed long enough
@@ -48,7 +48,7 @@ export function PaywallView({ subscription, onRefresh }: PaywallViewProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         <Button className="w-full" onClick={startCheckout} disabled={pending}>
-          {pending ? "Opening checkout…" : "Upgrade to Pro — $19/month"}
+          {pending ? "Opening checkout…" : "Upgrade to Pro — $29/month"}
         </Button>
         {checkoutOpened && (
           <p className="text-sm text-muted-foreground">

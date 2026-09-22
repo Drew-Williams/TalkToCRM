@@ -22,7 +22,7 @@ Most reps get coached rarely — a handful of deal reviews a quarter, if that �
 - **Persistent coaching memory**: the product's core differentiator — the coach has continuity across conversations, the same way a human manager who's followed a deal for weeks does, without a rep having to repeat themselves.
 - **Personalization**: the coach knows each rep by name and role, and a lightweight AI-generated company profile (value proposition, ideal customer, industry, competitors) so its coaching is calibrated to the business it's coaching for — inferred automatically from a company's own website.
 - **A frictionless growth funnel**: install-first, no landing page sign-up, no credit card upfront. A 7-day free trial starts the moment someone opens the extension; payment is only requested once value has already been delivered. This is a deliberate product-led-growth design choice to maximize the number of people who actually experience the product before being asked to pay.
-- **Production billing infrastructure**: Stripe-integrated subscription billing ($19/month), fully wired end-to-end from trial to paid conversion.
+- **Production billing infrastructure**: Stripe-integrated subscription billing ($29/month), fully wired end-to-end from trial to paid conversion.
 
 ## Where it stands today
 

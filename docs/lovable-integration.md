@@ -16,7 +16,7 @@ extension/backend side to make it work.
 > coach now" (scrolls to the existing `LiveCoach` component). Remove the
 > Stripe email-capture flow from `EarlyAccessModal.tsx` — stop importing it,
 > delete in a follow-up. New "How the trial works" section: install free
-> (no card, no account) → 7 days of Pro on the house → $19/month after, or
+> (no card, no account) → 7 days of Pro on the house → $29/month after, or
 > free tier. `/welcome` route stays as a lightweight post-install landing
 > (linked from inside the extension after first launch, not from Stripe) —
 > no `session_id` logic needed there anymore.
@@ -60,7 +60,7 @@ registers a developer account.
   - `STRIPE_SECRET_KEY` — your Stripe secret API key (`sk_test_...` while
     testing, `sk_live_...` once ready for real charges).
   - `STRIPE_PRICE_ID` — the Price ID (`price_...`, not the Product ID) for
-    the $19/month plan.
+    the $29/month plan.
   - `STRIPE_WEBHOOK_SECRET` — from Stripe Dashboard → Developers → Webhooks
     → Add endpoint →
     `https://ziccpxpvrgbsjybjhzhv.supabase.co/functions/v1/stripe-webhook`,
