@@ -48,6 +48,11 @@ export interface CrmAdapter {
     scopes: string[];
     /** The connecting CRM user's own name, when available — best-effort personalization signal (see ensure_profile_name), never required. */
     ownerName: string | null;
+    /** The connecting CRM user's own email, when available — best-effort contact signal (see ensure_profile_email) for outreach, never required and never the same thing as the rep explicitly linking a recovery email to their Corner account. */
+    ownerEmail: string | null;
+    /** The CRM's own numeric/opaque identifiers for the connecting company and user, when available — needed to match an incoming uninstall webhook (which only ever supplies these, no Corner-side user_id) back to this connection. Null for providers with no uninstall webhook wired up (HubSpot, for now). */
+    providerCompanyId: string | null;
+    providerUserId: string | null;
   }>;
   /** Refresh an access token. Returns null if the provider has no refresh flow (e.g. a non-expiring token). */
   refreshAccessToken(refreshToken: string): Promise<{

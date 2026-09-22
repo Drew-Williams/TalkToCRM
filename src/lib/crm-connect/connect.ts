@@ -20,33 +20,42 @@ const AUTH_URL_BUILDERS: Record<CrmProvider, (redirectUri: string) => string> = 
  * it to the matching *-oauth-exchange edge function to do the actual token
  * exchange server-side. Throws with a message safe to show the rep.
  */
+// Pipedrive requires its one registered Callback URL to be a real, publicly
+// reachable HTTPS endpoint — confirmed both by a Pipedrive team member on
+// their own developer forum ("the callback url should be publicly
+// accessible... so Pipedrive Marketplace team will be able to install and
+// test the app") and independently here: a plain
+// https://<extension-id>.chromiumapp.org/... URL doesn't even resolve over
+// DNS (NXDOMAIN) — it's a Chrome-internal pseudo-domain
+// chrome.identity.launchWebAuthFlow intercepts before any real network
+// request happens, not something Pipedrive (or anyone) can actually reach.
+// That's what was silently blocking "Send to review" this whole time, not
+// a picky form validator as first suspected.
+//
+// pipedrive-oauth-redirect (a real Supabase edge function) is the fix: a
+// genuinely live URL, registered as Pipedrive's Callback URL instead, whose
+// only job on a GET is to 302-forward the code/state/error query params on
+// to the extension's real chromiumapp.org URL. Chrome's launchWebAuthFlow
+// watches every navigation in its flow window for a URL matching that
+// pattern, however many redirect hops it took to get there (confirmed
+// against Chromium's own WebAuthFlow source — IsValidRedirectUrl is a
+// plain prefix check with no hop-count restriction), so this extra real
+// hop is invisible below — the final responseUrl is still the
+// chromiumapp.org one, exactly as before. It also gets us a real endpoint
+// to receive Pipedrive's uninstall webhook on, which genuinely didn't
+// exist until now (see mem/design/pipedrive-uninstall-v1.md).
+//
+// HubSpot has no such one-URL-only restriction (their dashboard accepts
+// multiple registered redirect URLs), so it keeps using
+// chrome.identity.getRedirectURL() directly — no proxy needed there.
+const PIPEDRIVE_REDIRECT_PROXY = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pipedrive-oauth-redirect`;
+
 export async function connectCrm(provider: CrmProvider): Promise<{ accountRef: string | null }> {
-  // Stable per-installation URL like
-  // https://<extension-id>.chromiumapp.org/<provider>-oauth-callback — this
-  // is what must be registered as the app's redirect/callback URL in the
-  // HubSpot/Pipedrive developer dashboard.
-  //
-  // The trailing path segment specifically (not just a bare
-  // getRedirectURL() root) is required for Pipedrive: their Developer Hub
-  // form validates the Callback URL field at "Send to review" time (not
-  // during normal editing, confusingly) and rejects a bare
-  // "https://<id>.chromiumapp.org/" with "Enter a valid URL" — discovered
-  // by testing directly against a real submission attempt. Chrome's
-  // interception in launchWebAuthFlow works on the whole
-  // chromiumapp.org/<extension-id> origin regardless of path, so adding
-  // one here doesn't change how the client side works at all — this only
-  // exists to satisfy Pipedrive's own stricter URL format.
-  //
-  // NOTE: changing this value requires re-registering the matching new
-  // Callback URL in Pipedrive's Developer Hub (Basic info) — real users are
-  // already connected via the previous bare-root URL, so do not flip the
-  // Developer Hub setting until this new code is actually live for most
-  // installs (Chrome Web Store update, given time to roll out), or new
-  // connection attempts will fail with a redirect_uri mismatch in the
-  // meantime. See mem/design/pipedrive-uninstall-v1.md and README.md's
-  // "pinned extension ID" section for the related one-Callback-URL-per-app
-  // constraint this interacts with.
-  const redirectUri = chrome.identity.getRedirectURL(`${provider}-oauth-callback`);
+  // Must be registered as the app's redirect/callback URL in the matching
+  // developer dashboard — see the module comment above for why Pipedrive
+  // specifically needs a real proxy URL, not chrome.identity.getRedirectURL()
+  // directly.
+  const redirectUri = provider === "pipedrive" ? PIPEDRIVE_REDIRECT_PROXY : chrome.identity.getRedirectURL(`${provider}-oauth-callback`);
   const authUrl = AUTH_URL_BUILDERS[provider](redirectUri);
 
   const responseUrl = await chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true });

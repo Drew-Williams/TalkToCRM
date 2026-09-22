@@ -44,3 +44,10 @@ verify_jwt = false
 # the function's own comment).
 [functions.ops-dashboard]
 verify_jwt = false
+
+# pipedrive-oauth-redirect is called directly by Pipedrive's OAuth server
+# (GET, the live authorization redirect) and Pipedrive's uninstall webhook
+# (DELETE, authenticated via HTTP Basic Auth) -- neither ever carries a
+# Supabase bearer token.
+[functions.pipedrive-oauth-redirect]
+verify_jwt = false

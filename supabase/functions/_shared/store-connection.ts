@@ -29,6 +29,8 @@ export async function exchangeAndStoreConnection(
         account_ref: result.accountRef,
         api_base: result.apiBase,
         scopes: result.scopes,
+        provider_company_id: result.providerCompanyId,
+        provider_user_id: result.providerUserId,
       },
       { onConflict: "user_id,provider" },
     );
@@ -47,6 +49,19 @@ export async function exchangeAndStoreConnection(
     const { error: nameError } = await admin.rpc("ensure_profile_name", { p_user_id: userId, p_display_name: result.ownerName });
     if (nameError) {
       console.error(`[store-connection] failed to backfill profile name from ${provider}:`, nameError.message);
+    }
+  }
+
+  // Same best-effort pattern for a contact email — a separate concept
+  // from the rep explicitly linking a recovery email to their Corner
+  // account (LinkAccountBanner). Exists so support/ops
+  // (ops_trial_watchlist, ops-dashboard.html) has a real way to reach a
+  // rep who's connected a CRM but never linked an email — most trial
+  // accounts, since the reverse-trial funnel never asks for one upfront.
+  if (result.ownerEmail) {
+    const { error: emailError } = await admin.rpc("ensure_profile_email", { p_user_id: userId, p_contact_email: result.ownerEmail });
+    if (emailError) {
+      console.error(`[store-connection] failed to backfill contact email from ${provider}:`, emailError.message);
     }
   }
 

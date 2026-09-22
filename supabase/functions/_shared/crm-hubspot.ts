@@ -197,21 +197,23 @@ export const hubspotAdapter: CrmAdapter = {
 
     let accountRef: string | null = null;
     let ownerName: string | null = null;
+    let ownerEmail: string | null = null;
     try {
       const infoRes = await fetch(`https://api.hubapi.com/oauth/v1/access-tokens/${data.access_token}`);
       if (infoRes.ok) {
         const info = await infoRes.json();
         accountRef = String(info.hub_id ?? info.portal_id ?? "") || null;
-        // access-tokens only gives an email (`user`) for the connecting
-        // user, never a name directly — one more lookup via Owners
-        // resolves it, same as fetchOwnerName above but keyed by email
-        // instead of an owner id.
+        // access-tokens gives an email (`user`) for the connecting user
+        // directly, never a name — one more lookup via Owners resolves a
+        // name, same as fetchOwnerName above but keyed by email instead of
+        // an owner id.
         if (typeof info.user === "string" && info.user) {
+          ownerEmail = info.user;
           ownerName = await fetchOwnerNameByEmail(data.access_token, info.user);
         }
       }
     } catch {
-      // Non-fatal — account_ref/ownerName are both best-effort informational signals, neither required for the connection to work.
+      // Non-fatal — account_ref/ownerName/ownerEmail are all best-effort informational signals, none required for the connection to work.
     }
 
     return {
@@ -222,6 +224,9 @@ export const hubspotAdapter: CrmAdapter = {
       apiBase: null, // HubSpot always uses api.hubapi.com regardless of portal
       scopes: typeof data.scope === "string" ? data.scope.split(" ") : [],
       ownerName,
+      ownerEmail,
+      providerCompanyId: null, // HubSpot's uninstall webhook isn't wired up yet, unlike Pipedrive's — see pipedrive-oauth-redirect
+      providerUserId: null,
     };
   },
 

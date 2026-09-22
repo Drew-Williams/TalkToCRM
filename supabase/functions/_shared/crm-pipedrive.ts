@@ -167,6 +167,9 @@ export const pipedriveAdapter: CrmAdapter = {
 
     let accountRef: string | null = null;
     let ownerName: string | null = null;
+    let ownerEmail: string | null = null;
+    let providerCompanyId: string | null = null;
+    let providerUserId: string | null = null;
     const apiBase: string | null = data.api_domain ?? null;
     try {
       const meRes = await fetch(`${apiBase ?? DEFAULT_API_BASE}/api/v2/users/me`, {
@@ -176,13 +179,17 @@ export const pipedriveAdapter: CrmAdapter = {
         const me = await meRes.json();
         const companyDomain = me.data?.company_domain as string | undefined;
         accountRef = companyDomain ?? null;
-        // The connecting user's own name — Pipedrive's /users/me already
-        // identifies exactly who authorized this connection, no extra
-        // lookup needed (unlike HubSpot, which only gives an email here).
+        // The connecting user's own name/email/ids — Pipedrive's /users/me
+        // already identifies exactly who authorized this connection, no
+        // extra lookup needed (unlike HubSpot, whose equivalent endpoint
+        // only gives an email, requiring a second Owners lookup for a name).
         ownerName = (me.data?.name as string | undefined) ?? null;
+        ownerEmail = (me.data?.email as string | undefined) ?? null;
+        providerCompanyId = me.data?.company_id != null ? String(me.data.company_id) : null;
+        providerUserId = me.data?.id != null ? String(me.data.id) : null;
       }
     } catch {
-      // Non-fatal — account_ref/ownerName are both best-effort informational signals, neither required for the connection to work.
+      // Non-fatal — every one of these is a best-effort informational signal, none required for the connection to work.
     }
 
     return {
@@ -193,6 +200,9 @@ export const pipedriveAdapter: CrmAdapter = {
       apiBase,
       scopes: typeof data.scope === "string" ? data.scope.split(" ") : [],
       ownerName,
+      ownerEmail,
+      providerCompanyId,
+      providerUserId,
     };
   },
 
