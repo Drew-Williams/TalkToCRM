@@ -8,6 +8,56 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Proactively ask for microphone access right at install, in a real tab
+// (src/onboarding — see manifest.config.ts and lib/chrome/microphone.ts for
+// why a tab, not the side panel) rather than waiting for the rep to
+// discover the mic is needed by clicking "Talk" and hitting a blocked
+// prompt mid-flow. Only on a genuine fresh install (reason === "install"),
+// not every "reload" during development/testing — existing users
+// reloading an update shouldn't get an extra tab thrown at them each time.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    chrome.runtime.openOptionsPage();
+  }
+});
+
+// Chrome only auto-injects content_scripts into tabs navigated to *after*
+// install/reload — a HubSpot/Pipedrive tab that was already open keeps
+// running no content script (fresh install) or the previous version's
+// (an in-place "reload" of the same unpacked extension) until manually
+// refreshed, which is what made the side panel get stuck on "No deal
+// detected" after every reload during testing. Reading the content script
+// list from the manifest (rather than hardcoding file paths) means this
+// keeps working regardless of the hashed build filenames CRXJS produces.
+chrome.runtime.onInstalled.addListener(async () => {
+  const manifest = chrome.runtime.getManifest();
+  for (const script of manifest.content_scripts ?? []) {
+    if (!script.js?.length || !script.matches?.length) continue;
+    const tabs = await chrome.tabs.query({ url: script.matches });
+    for (const tab of tabs) {
+      if (tab.id === undefined) continue;
+      // An in-place "reload" (same extension id, not a fresh install into a
+      // new folder) leaves the *previous* version's content script alive
+      // and still responsive in already-open tabs — re-injecting on top of
+      // that would run the module-level code (history.pushState patching,
+      // the initial detect-and-report, the 1.5s poll) a second time in the
+      // same isolated world. Ping first; only inject if nothing answers.
+      const alreadyAlive = await chrome.tabs
+        .sendMessage(tab.id, { type: "GET_CURRENT_DEAL" })
+        .then(() => true)
+        .catch(() => false);
+      if (alreadyAlive) continue;
+
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: script.js }).catch((err) => {
+        // Tab navigated away/closed between query and inject, or it's a
+        // page scripting can't touch (e.g. a Chrome Web Store preview) —
+        // not fatal, a manual refresh is still the fallback.
+        console.warn("[background] failed to inject content script into tab", tab.id, err);
+      });
+    }
+  }
+});
+
 // In-memory cache only. MV3 service workers get evicted whenever Chrome
 // feels like it, so this map can be empty even for a tab that already has a
 // detected deal — resolveActiveDeal() below falls back to asking the content
@@ -23,10 +73,36 @@ function broadcastActiveDealUpdate(tabId: number, deal: DetectedDeal | null) {
   });
 }
 
+// `chrome.tabs.query({ active: true, currentWindow: true })` needs an
+// actually-OS-focused Chrome window to resolve "current" against — when the
+// rep clicks into a different application entirely (not a different Chrome
+// tab), Chrome can momentarily report no focused window at all, and that
+// query returns nothing. That was surfacing as the side panel flipping to
+// "No deal detected" just from clicking away, even though the active *tab*
+// never actually changed. Tracked separately here and only ever updated by
+// a genuine tab activation, lastActiveTabId is immune to that: OS focus
+// loss/regain never touches it, so it keeps pointing at the right tab the
+// whole time the rep is away.
+let lastActiveTabId: number | null = null;
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  lastActiveTabId = tabId;
+});
+
+async function resolveActiveTabId(): Promise<number | null> {
+  if (lastActiveTabId !== null) return lastActiveTabId;
+  // Cold start (service worker just woke up, no onActivated event seen yet)
+  // — bootstrap once from Chrome's own memory of its last-focused window,
+  // which (unlike currentWindow) doesn't require a window to be OS-focused
+  // right now, only to have been focused at some point.
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true }).catch(() => [] as chrome.tabs.Tab[]);
+  lastActiveTabId = tab?.id ?? null;
+  return lastActiveTabId;
+}
+
 async function resolveActiveDeal(): Promise<Extract<ExtensionMessage, { type: "ACTIVE_DEAL_RESULT" }>> {
-  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const tabId = activeTab?.id;
-  if (tabId === undefined) {
+  const tabId = await resolveActiveTabId();
+  if (tabId === null) {
     return { type: "ACTIVE_DEAL_RESULT", deal: null, tabId: null };
   }
 
@@ -73,4 +149,41 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   dealsByTabId.delete(tabId);
+  if (lastActiveTabId === tabId) lastActiveTabId = null;
+});
+
+// "toggle-talk" keyboard shortcut (see manifest.config.ts) — a command
+// firing is itself a user gesture, so chrome.sidePanel.open() is allowed to
+// run here even though the panel may not be open yet. If the side panel
+// wasn't already open, its React app needs a moment to mount and register
+// its TOGGLE_TALK listener (see useTalkSession) before it can receive the
+// broadcast below — one short retry covers that without adding a
+// noticeable delay when the panel was already open (the common case).
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "toggle-talk") return;
+
+  try {
+    const tabId = await resolveActiveTabId();
+    if (tabId !== null) {
+      const tab = await chrome.tabs.get(tabId);
+      if (tab.windowId !== undefined) {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+      }
+    }
+  } catch (err) {
+    console.warn("[background] failed to open side panel for toggle-talk shortcut", err);
+  }
+
+  const message: ExtensionMessage = { type: "TOGGLE_TALK" };
+  const sent = await chrome.runtime.sendMessage(message).then(
+    () => true,
+    () => false,
+  );
+  if (!sent) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    chrome.runtime.sendMessage(message).catch(() => {
+      // Still no listener — the side panel genuinely isn't open/mounted;
+      // nothing to toggle.
+    });
+  }
 });

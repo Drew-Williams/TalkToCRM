@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Corner — Ops Dashboard</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 24px 64px;
+    background: #1D2C36;
+    color: #F1E4CB;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: #CBC3B6; font-size: 13px; margin: 0 0 28px; }
+  h2 { font-size: 15px; margin: 40px 0 12px; color: #F1E4CB; }
+  .card {
+    background: #263540;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .funnel { display: flex; flex-wrap: wrap; gap: 12px; }
+  .stat {
+    background: #263540;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 16px 18px;
+    min-width: 140px;
+    flex: 1;
+  }
+  .stat-value { font-size: 26px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: #CBC3B6; margin-top: 2px; }
+  .stat-sub { font-size: 11px; color: #B43E36; margin-top: 6px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: #CBC3B6; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  td.days { color: #B43E36; font-weight: 600; white-space: nowrap; }
+  td.empty { color: #CBC3B6; text-align: center; padding: 20px; }
+  .chart-wrap { margin-top: 8px; }
+  .refresh { font-size: 12px; color: #CBC3B6; margin-top: 40px; }
+  .refresh a, .refresh code { color: #B43E36; }
+  .state { padding: 60px 0; text-align: center; color: #CBC3B6; }
+  .error { color: #E5847A; }
+  #app { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Corner — Ops Dashboard</h1>
+  <p class="subtitle" id="subtitle">Loading…</p>
+
+  <div id="loading" class="state">Loading live data from Supabase…</div>
+  <div id="errorBox" class="state error" style="display:none"></div>
+
+  <div id="app">
+    <h2>Funnel snapshot</h2>
+    <div class="funnel" id="funnel"></div>
+
+    <h2>Trial watchlist — reach out before these expire</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Days left</th><th>Who</th><th>Connected CRM</th><th>Talked to Corner</th></tr></thead>
+        <tbody id="watchlistBody"></tbody>
+      </table>
+    </div>
+
+    <h2>Lapsed trials — reactivation candidates</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Lapsed</th><th>Who</th><th>Had connected</th><th>Had talked</th></tr></thead>
+        <tbody id="lapsedBody"></tbody>
+      </table>
+    </div>
+
+    <h2>Signups per day (last 30 days with activity)</h2>
+    <div class="card chart-wrap" id="signupsChart"></div>
+
+    <h2>Calls per day (last 30 days with activity)</h2>
+    <div class="card chart-wrap" id="callsChart"></div>
+
+    <p class="refresh">Reload this page for current data. Never share this file — it has a private access key embedded in it. See <code>docs/monitoring-and-ops.md</code> for the underlying SQL views, and Chrome Web Store / Stripe / ElevenLabs dashboards for what isn't here (installs, revenue, call transcripts).</p>
+  </div>
+</div>
+
+<script>
+  // Same private-key auth as before, just embedded here instead of in a
+  // URL — this file calls a Supabase edge function (ops-dashboard) that
+  // returns JSON, not HTML directly, because Supabase forcibly rewrites
+  // any GET response with a text/html content-type to text/plain on
+  // projects without a paid Custom Domain add-on. See ops-dashboard's own
+  // comment for the full story. Rendering happens here instead, in a
+  // plain local file you open directly — no hosting needed at all.
+  const ENDPOINT = "https://ziccpxpvrgbsjybjhzhv.supabase.co/functions/v1/ops-dashboard";
+  const KEY = "SrNJ6BGTUdugricqjs61JWShcPC9EhckbRFu1olQSYo";
+
+  function esc(v) {
+    return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  function fmtDateTime(iso) {
+    return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  function pct(n, d) {
+    if (!d) return "—";
+    return Math.round((n / d) * 100) + "%";
+  }
+
+  function statCard(label, value, sub) {
+    return `<div class="stat">
+      <div class="stat-value">${esc(value)}</div>
+      <div class="stat-label">${esc(label)}</div>
+      ${sub ? `<div class="stat-sub">${esc(sub)}</div>` : ""}
+    </div>`;
+  }
+
+  function barChart(rows) {
+    const width = 900;
+    const height = 130;
+    const barGap = 3;
+    const max = Math.max(1, ...rows.map((r) => r.value));
+    const barW = rows.length ? width / rows.length : width;
+    const bars = rows
+      .map((r, i) => {
+        const h = Math.round((r.value / max) * (height - 28));
+        const x = i * barW + barGap / 2;
+        const y = height - h - 18;
+        const w = Math.max(1, barW - barGap);
+        const showLabel = rows.length <= 15 || i % Math.ceil(rows.length / 15) === 0;
+        const label = fmtDate(r.day).split(" ")[1] || "";
+        return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#B43E36" rx="2"><title>${esc(fmtDate(r.day))}: ${r.value}</title></rect>${
+          showLabel ? `<text x="${x + w / 2}" y="${height - 4}" font-size="9" fill="#CBC3B6" text-anchor="middle">${esc(label)}</text>` : ""
+        }`;
+      })
+      .join("");
+    return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="none">${bars}</svg>`;
+  }
+
+  function watchlistRows(rows, kind) {
+    if (!rows.length) return `<tr><td colspan="4" class="empty">Nothing here right now.</td></tr>`;
+    return rows
+      .map((r) => {
+        const who = r.display_name || r.email || (r.user_id || "").slice(0, 8);
+        const connected = kind === "watchlist" ? r.has_connected_crm : r.had_connected_crm;
+        const talked = kind === "watchlist" ? r.has_completed_a_call : r.had_completed_a_call;
+        const days = kind === "watchlist" ? `${r.days_remaining}d left` : `${r.days_since_lapsed}d ago`;
+        return `<tr>
+          <td class="days">${esc(days)}</td>
+          <td>${esc(who)}</td>
+          <td>${connected ? "✅" : "—"}</td>
+          <td>${talked ? "✅" : "—"}</td>
+        </tr>`;
+      })
+      .join("");
+  }
+
+  async function load() {
+    try {
+      const res = await fetch(`${ENDPOINT}?key=${encodeURIComponent(KEY)}`);
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = await res.json();
+      render(data);
+    } catch (e) {
+      document.getElementById("loading").style.display = "none";
+      const box = document.getElementById("errorBox");
+      box.style.display = "block";
+      box.textContent = "Failed to load dashboard data: " + (e && e.message ? e.message : String(e));
+    }
+  }
+
+  function render(data) {
+    document.getElementById("subtitle").textContent = `Generated ${fmtDateTime(data.generatedAt)} · private, do not share this file`;
+
+    const f = data.funnel;
+    document.getElementById("funnel").innerHTML = [
+      statCard("Total accounts", f.total_accounts),
+      statCard("Connected a CRM", f.connected_crm, pct(f.connected_crm, f.total_accounts) + " of accounts"),
+      statCard("Completed a call", f.completed_first_call, pct(f.completed_first_call, f.total_accounts) + " of accounts"),
+      statCard("Currently trialing", f.currently_trialing),
+      statCard("Trial lapsed, no conversion", f.trial_lapsed_no_conversion),
+      statCard("Active paid", f.active_paid),
+      statCard("Payment issue", f.payment_issue),
+      statCard("Canceled", f.canceled),
+    ].join("");
+
+    document.getElementById("watchlistBody").innerHTML = watchlistRows(data.trialWatchlist, "watchlist");
+    document.getElementById("lapsedBody").innerHTML = watchlistRows(data.lapsedTrials, "lapsed");
+    document.getElementById("signupsChart").innerHTML = barChart(data.dailySignups.map((r) => ({ day: r.day, value: r.signups })));
+    document.getElementById("callsChart").innerHTML = barChart(data.dailyCalls.map((r) => ({ day: r.day, value: r.calls })));
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("app").style.display = "block";
+  }
+
+  load();
+</script>
+</body>
+</html>

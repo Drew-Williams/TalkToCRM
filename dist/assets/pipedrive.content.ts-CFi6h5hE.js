@@ -1,1 +1,0 @@
-import{t as e}from"./watch-and-report-BiK8TIsj.js";var t=/^([a-z0-9-]+)\.pipedrive\.com$/i,n=/^\/deal\/(\d+)(?:\/.*)?$/;function r(e){let r;try{r=new URL(e)}catch{return null}let i=r.hostname.match(t);if(!i)return null;let a=r.pathname.match(n);return a?{provider:`pipedrive`,dealId:a[1],url:e,detectedAt:Date.now(),accountRef:i[1]}:null}e(r);

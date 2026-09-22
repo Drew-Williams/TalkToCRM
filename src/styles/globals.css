@@ -2,71 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Talk to CRM — side panel design tokens.
-   Standard shadcn/ui "slate" defaults for now. No brand palette yet
-   (per the step-1 decision to use placeholders until brand direction
-   lands) — swap these HSL values when it does. */
+/* Corner — side panel design tokens: a dark "HUD" aesthetic. These used to
+   be an independent cyan/electric-blue palette invented for the extension
+   alone, which drifted from mycornercoach.com's actual brand (navy + cream
+   + a brick-red accent — see its "on-dark" mode, the same dark-panel-with-
+   red-accent look shown in its own hero mockup of this very side panel).
+   Values below are converted 1:1 from that site's CSS (--navy, --cream,
+   --red, --red-deep, --corner-blue, and its .on-dark overrides) so the
+   extension and the marketing site read as the same product. There's no
+   light-mode variant — this is the only theme the side panel has, so these
+   live directly on :root rather than behind a `.dark` class. */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 204 30% 16%; /* #1D2C36 — mycornercoach.com's --navy / .on-dark background */
+    --foreground: 39 58% 87%; /* #F1E4CB — mycornercoach.com's --cream */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 205 25% 20%; /* #263540 — mycornercoach.com's .on-dark --card; opaque fallback, cards actually render as a translucent overlay, see ui/card.tsx */
+    --card-foreground: 39 58% 87%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 205 25% 20%;
+    --popover-foreground: 39 58% 87%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 4 54% 46%; /* #B43E36 — mycornercoach.com's --red, its one CTA/brand accent color */
+    --primary-foreground: 38 65% 97%; /* #FCF8F1 — mycornercoach.com's --primary-foreground */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 205 25% 20%;
+    --secondary-foreground: 39 58% 87%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 205 22% 18%;
+    --muted-foreground: 37 17% 75%; /* #CBC3B6 — mycornercoach.com's .on-dark --muted-foreground */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 200 26% 35%; /* #436272 — mycornercoach.com's --corner-blue, used there as a secondary/tertiary accent, never the primary CTA color */
+    --accent-foreground: 39 58% 87%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 2 65% 35%; /* #94221F — mycornercoach.com's --red-deep; a step darker than --primary so "End call" reads as distinct from the brand-red main CTA rather than identical to it */
+    --destructive-foreground: 38 65% 97%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 100%; /* white — matches mycornercoach.com's --border (white at 12% opacity); actual card borders use border-white/10 directly, see ui/card.tsx */
+    --input: 0 0% 100%;
+    --ring: 4 54% 46%;
 
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --radius: 0.75rem;
   }
 }
 
@@ -76,6 +52,6 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply overflow-x-hidden bg-background text-foreground;
   }
 }
