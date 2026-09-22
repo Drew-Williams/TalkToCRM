@@ -1,6 +1,6 @@
 ---
 name: Pipedrive uninstall handling v1
-description: Why Corner can't receive Pipedrive's server-to-server uninstall webhook given chrome.identity.launchWebAuthFlow's single-callback-URL constraint, and the reactive fallback (detect a 401, clear the stored connection) shipped instead
+description: Why Corner couldn't receive Pipedrive's server-to-server uninstall webhook given chrome.identity.launchWebAuthFlow's single-callback-URL constraint, the reactive fallback shipped as a stopgap, and the eventual real fix (a redirect-proxy edge function) — see the third addendum for current status, this is now resolved
 type: design
 ---
 
@@ -95,4 +95,55 @@ can't show a server genuinely receiving Pipedrive's webhook (there isn't
 one reachable yet) — it should instead show the *user-visible* behavior:
 uninstall from Pipedrive, then show Corner's side panel correctly
 reflecting "not connected" rather than silently pretending a dead
-connection is still fine.
+connection is still fine. (Superseded by the third addendum below — once
+v0.1.3 is live and the Callback URL is switched over, this segment could
+be re-recorded to show the real thing, though the existing recording
+showing the user-visible behavior is still accurate and not wrong, just
+no longer the only option.)
+
+**Third addendum, and the actual root cause: this was never a form-
+validation quirk, and the "deferred" fix above is what shipped.**
+Attempting the real "Send to review" submission (not just editing the
+field) kept failing with "Enter a valid URL" even after the v0.1.1 path
+fix — retyping, re-saving, adding a longer path, nothing satisfied it
+consistently. The actual explanation came from a Pipedrive team member's
+own answer on their developer forum: "the callback url should be
+publicly accessible... so Pipedrive Marketplace team will be able to
+install and test the app during the review process." Checked directly:
+`dpadpffnlgkbpakbfnnjnegdolfgfeio.chromiumapp.org` returns **NXDOMAIN** —
+it does not resolve on the public internet at all, full stop, path or no
+path. Every earlier theory (bare root vs. a path segment) was chasing a
+symptom of the same underlying, un-fixable-by-URL-format problem: this
+was never going to be accepted as a real Callback URL by anything that
+actually checks reachability, because it fundamentally isn't reachable
+by anyone outside Chrome's own `launchWebAuthFlow` implementation.
+
+**The fix from "architecturally-correct, deferred" above, now shipped in
+v0.1.3.** `pipedrive-oauth-redirect` (a real Supabase edge function) is
+now the one registered Callback URL:
+`https://ziccpxpvrgbsjybjhzhv.supabase.co/functions/v1/pipedrive-oauth-redirect`
+— a genuinely reachable HTTPS address. Its `GET` handler 302-redirects
+the `code`/`state`/`error` query params on to the extension's real
+`chromiumapp.org` URL, which `chrome.identity.launchWebAuthFlow`
+correctly intercepts as the final hop of that redirect chain (confirmed
+directly against Chromium's own `WebAuthFlow::IsValidRedirectUrl`, a
+plain URL-prefix check with no restriction on how many redirects
+preceded it) — so `connectCrm()` in `connect.ts` is completely unchanged
+downstream of this, it still just gets the same final URL back. Its
+`DELETE` handler (HTTP Basic Auth via `PIPEDRIVE_CLIENT_ID`/`_SECRET`)
+receives the actual uninstall webhook for the first time — matched back
+to a `crm_connections` row via two new columns, `provider_company_id`/
+`provider_user_id`, captured from Pipedrive's `/users/me` at connect
+time (`20260922140000_pipedrive_provider_ids.sql`). It revokes the
+refresh token and deletes the row — genuinely instant cleanup now,
+not the "wait for the next 401" reactive fallback described above
+(which stays in place as a second layer regardless, since it also
+covers e.g. an individual access grant being revoked without a full
+app uninstall).
+
+Same rollout-sequencing caution as the v0.1.1 path change: real users
+are connected via the old `chromiumapp.org` Callback URL on the
+currently-published Chrome Web Store version, so the Developer Hub
+setting must not be switched to this new proxy URL until v0.1.3 is
+actually live and has had time to propagate. See README.md's "pinned
+extension ID" section for current status.

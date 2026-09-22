@@ -96,33 +96,51 @@ not `dist/`), so there was never a way to make the published ID match the
 pinned local one.
 
 This matters because Pipedrive's OAuth app allows only **one** registered
-Callback URL, and reuses that same URL for its uninstall webhook too (see
-`mem/design/pipedrive-uninstall-v1.md`) — unlike HubSpot, which accepts
-multiple redirect URLs. As of the initial Pipedrive Marketplace submission,
-that one Callback URL is registered as
-`https://dpadpffnlgkbpakbfnnjnegdolfgfeio.chromiumapp.org/` (the **published**
-ID) — connecting Pipedrive from a local unpacked build will fail with
-"Redirect URI match failed" until either the Callback URL is switched back
-temporarily, or a second, dev-only Pipedrive app is registered for local
-testing.
+Callback URL, and reuses that same URL for its uninstall webhook too —
+unlike HubSpot, which accepts multiple redirect URLs. That single URL is
+**not** a `chromiumapp.org` address at all anymore (see the next section)
+— HubSpot's redirect URL should have both extension IDs registered once
+HubSpot comes back into scope (see `ConnectCrmCard.tsx`'s hidden flag), so
+the "which ID is registered" question doesn't bite the same way there.
 
-**The redirect URI now includes a path segment, not just a bare root**
-(`.../pipedrive-oauth-callback` — see `connect.ts`), added in v0.1.1 after
-Pipedrive's Developer Hub started rejecting a bare
-`https://<id>.chromiumapp.org/` in its Callback URL field with "Enter a
-valid URL," but only at "Send to review" submission time, not during
-normal field editing — confusing to track down, but confirmed directly
-against a real submission attempt. **Pipedrive's registered Callback URL
-must be updated to match this new path once v0.1.1 is live on the Chrome
-Web Store and has had time to roll out to existing installs** — not
-before, since real users are connected via the old bare-root URL on the
-currently-published version, and flipping the Developer Hub setting
-first would break new connection attempts with a redirect_uri mismatch
-in the interim.
+### Pipedrive's Callback URL is a real server now, not `chromiumapp.org`
 
-HubSpot's redirect URL should have both IDs registered once HubSpot
-comes back into scope (see `ConnectCrmCard.tsx`'s hidden flag), so this
-doesn't bite the same way there.
+Two earlier fixes to Pipedrive's Callback URL (adding a path segment in
+v0.1.1) turned out to be chasing the wrong theory. The actual blocker,
+confirmed both by a Pipedrive team member on their own developer forum
+and independently here — `https://<extension-id>.chromiumapp.org/...`
+returns **NXDOMAIN**, it doesn't resolve on the public internet at all —
+is that Pipedrive requires its one Callback URL to be a genuinely live,
+reachable HTTPS endpoint ("so Pipedrive Marketplace team will be able to
+install and test the app"). `chromiumapp.org` is a Chrome-internal
+pseudo-domain `chrome.identity.launchWebAuthFlow` intercepts before any
+real network request happens — nobody, including Pipedrive, could ever
+actually reach it.
+
+**Fixed in v0.1.3** with a real Supabase edge function,
+`pipedrive-oauth-redirect`, registered as Pipedrive's one Callback URL
+instead: `https://ziccpxpvrgbsjybjhzhv.supabase.co/functions/v1/pipedrive-oauth-redirect`.
+On `GET` (the live OAuth redirect), it 302s the `code`/`state`/`error`
+query params on to the extension's real `chromiumapp.org` URL — Chrome's
+`launchWebAuthFlow` watches every navigation in its flow window for a URL
+matching that pattern, however many redirect hops it took to get there
+(confirmed against Chromium's own `WebAuthFlow` source), so this extra
+real hop is invisible to `connectCrm()`, which still gets back exactly
+the same final URL as before. `connect.ts` sends this proxy URL — not
+`chrome.identity.getRedirectURL()` directly — as the `redirect_uri` for
+Pipedrive specifically; HubSpot is unaffected.
+
+Bonus: this also finally gives Corner a real endpoint to receive
+Pipedrive's uninstall webhook on (`DELETE`, authenticated via HTTP Basic
+Auth) — see `mem/design/pipedrive-uninstall-v1.md` for the full history
+of why that wasn't possible before this change.
+
+Connecting Pipedrive from a **local unpacked build** will fail with
+"Redirect URI match failed" as long as the registered Callback URL is
+this real proxy URL (correct for the published version) rather than the
+old bare `chromiumapp.org` address — either switch the Developer Hub
+setting back temporarily, or register a second, dev-only Pipedrive app
+for local testing.
 
 **This is a developer-only workflow** — there is no way for a website to
 silently or automatically install a Chrome extension for a visitor. Getting

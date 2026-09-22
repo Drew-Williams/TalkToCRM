@@ -5,6 +5,28 @@ Hub → Marketplace listing / Onboarding for users), drafted ahead of
 actually publishing — same purpose as `docs/chrome-web-store-listing.md`,
 for the other store. None of this is used by the extension at runtime.
 
+## Basic info — Callback URL (the actual "Send to review" blocker)
+
+This kept failing with "Enter a valid URL" through several rounds of
+troubleshooting (bare root, then a `/pipedrive-oauth-callback` path) —
+the real cause, confirmed by a Pipedrive team member on their own
+developer forum and independently by testing (`chromiumapp.org` returns
+NXDOMAIN, it doesn't resolve on the public internet), is that Pipedrive
+requires this field to be a genuinely live, reachable HTTPS endpoint, not
+just a valid-looking URL string. Full explanation:
+`mem/design/pipedrive-uninstall-v1.md`'s third addendum.
+
+**Once v0.1.3 is live on the Chrome Web Store and has had time to
+propagate** (same rollout-sequencing caution as every earlier Callback
+URL change — real users are connected via the old URL on the
+currently-published version), set the Callback URL to:
+```
+https://ziccpxpvrgbsjybjhzhv.supabase.co/functions/v1/pipedrive-oauth-redirect
+```
+This is a real Corner-controlled server (a Supabase edge function), not
+a `chromiumapp.org` address — it should finally pass Pipedrive's
+reachability check.
+
 ## Onboarding for users — content blocks
 
 Pipedrive shows these to a user right after they install the app from the
